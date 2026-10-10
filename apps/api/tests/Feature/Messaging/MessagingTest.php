@@ -76,6 +76,14 @@ class MessagingTest extends TestCase
         $this->postJson('/api/v1/conversations', ['recipient_ids' => [999999], 'body' => 'Hi'])->assertStatus(422)->assertJsonPath('error.code', 'recipient_invalid');
         $this->postJson('/api/v1/conversations', ['body' => 'Hi'])->assertStatus(422);
 
+        // From public pages: by agent and listing slug.
+        $listed = Agent::factory()->create();
+        $home = Property::factory()->forAgent($listed)->published()->create();
+        Notification::fake();
+        $this->postJson('/api/v1/conversations', ['agent_slug' => $listed->slug, 'property_slug' => $home->slug, 'body' => 'Hi'])->assertCreated()
+            ->assertJsonPath('data.participants.0.id', $listed->user_id)->assertJsonPath('data.property.slug', $home->slug);
+        $this->postJson('/api/v1/conversations', ['agent_slug' => 'nobody-here', 'body' => 'Hi'])->assertNotFound();
+
         $agent = Agent::factory()->create();
         $contacts = $this->getJson('/api/v1/conversations/contacts')->assertOk()->json('data');
         $this->assertContains($agent->user_id, array_column($contacts, 'id'));

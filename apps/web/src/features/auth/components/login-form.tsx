@@ -39,6 +39,8 @@ export function LoginForm() {
   const { errors, isSubmitting } = form.formState;
 
   const onAuthenticated = (user: User) => {
+    // Nothing cached for a previous account (unread counts, lists…) may leak into this session.
+    queryClient.clear();
     queryClient.setQueryData(authKeys.me, user);
     router.push(safeRedirect(searchParams.get("next")));
   };

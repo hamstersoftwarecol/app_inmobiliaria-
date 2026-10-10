@@ -195,19 +195,30 @@ expiry) is deferred until the first agreement exists.
 * ✅ `agent_availabilities` (ISO weekday + local `start_time`/`end_time`, CHECK start < end) and
   `agent_time_off` (timestamptz range).
 
-## 5. Transactions, documents, messaging, notifications 🗓️
+## 5. Transactions, documents, messaging, notifications ✅
 
-* `offers`, `transactions`, `transaction_milestones`, `transaction_documents`; monetary values
-  `numeric(14,2)`; state machine enforced in the application layer and audited.
-* `documents` (private R2 key, mime, size, sha256, classification, retention_until),
-  `document_versions`, `document_access_logs`.
-* `conversations`, `conversation_participants`, `messages` (read receipts per participant).
+* ✅ `offers`: `property_id`, `parent_id` (counter-offer chain), `side` buyer|seller, `status`,
+  `buyer_name`, `buyer_agent_id` or `buyer_agent_external`, `lead_id`, `amount numeric(14,2)`
+  (CHECK > 0), `earnest_money`, `financing`, `down_payment_percent`, `closing_date`,
+  `contingencies jsonb`, `terms`, `expires_at`, `submitted_at`, `responded_at`, `response_note`.
+  Partial unique index `offers_one_accepted` (one accepted offer per property).
+* ✅ `transactions`: property, `offer_id` (unique), listing/buyer agents, `sale_price`, `contract_date`,
+  `closing_date`, `status` open|closed|cancelled, `closed_at`, `cancelled_at`, `cancel_reason`.
+  Partial unique index `transactions_one_open` (one open transaction per property).
+* ✅ `transaction_participants` (role, name, contact, optional linked `user_id`) and
+  `transaction_milestones` (type, title, `due_date`, `completed_at/by`, `reminder_sent_at`).
+* ✅ `documents` (transaction, title, category, visibility internal|shared, `retain_until`, soft
+  deletes), `document_versions` (unique document + version; disk, private path, original name,
+  mime, size, `sha256`, `scan_status`, `scan_detail`, `scanned_at`), `document_access_logs`
+  (upload, link_issued, download; user, IP, user agent).
+* ✅ `conversations` (optional property / transaction, `last_message_at`),
+  `conversation_participants` (`last_read_at` = read receipt), `messages` (immutable).
 * ✅ `notifications` (Laravel database notifications) and ✅ `notification_preferences`
   (PK user + event, `mail` flag, `consented_at` for opt-in categories such as marketing).
-* `system_settings` (key/value jsonb, audited).
+* 🗓️ `system_settings` (key/value jsonb, audited).
 
 ## 6. Idempotency ✅
 
 `idempotency_keys` (unique `user_id` + `key`, method, path, `request_hash`, stored response status
 and body, `expires_at` 24 h, pruned hourly) backs the `Idempotency-Key` header on showing requests
-and bookings (offers and transactions will use it too). Only successful responses are stored.
+and bookings and on offer creation and transitions. Only successful responses are stored.

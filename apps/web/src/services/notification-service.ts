@@ -25,6 +25,10 @@ export function notificationHref(n: AppNotification): string {
       return "/dashboard/saved-searches";
     case n.type?.startsWith("showing."):
       return "/dashboard/showings";
+    case n.type === "message.new":
+      return `/dashboard/messages/${d.conversation_id}`;
+    case (n.type?.startsWith("offer.") || n.type?.startsWith("transaction.")) && typeof d.path === "string" && d.path.startsWith("/dashboard/"):
+      return String(d.path);
     case n.type === "license.status_changed":
       return "/dashboard/agent-profile";
     default:

@@ -8,12 +8,11 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RequireAuth } from "@/features/auth/components/require-auth";
 import { canUseCrm } from "@/features/crm/components/crm-shell";
+import { canUseOffers } from "@/features/deals/components/offers";
 import { canManageListings } from "@/features/properties/components/manage-listings";
 import { useTranslation } from "@/hooks/use-translation";
 import { authService } from "@/services/auth-service";
 import type { User } from "@/types/api";
-
-const MODULES = ["transactions", "documents", "messages"] as const;
 
 function Overview({ user }: { user: User }) {
   const { t } = useTranslation();
@@ -42,6 +41,19 @@ function Overview({ user }: { user: User }) {
           {user.permissions?.includes("appointments.manage_own") && (
             <Link href="/dashboard/availability" className={buttonVariants({ variant: "outline" })}>
               {t("nav.availability")}
+            </Link>
+          )}
+          {canUseOffers(user) && (
+            <Link href="/dashboard/offers" className={buttonVariants({ variant: "outline" })}>
+              {t("nav.offers")}
+            </Link>
+          )}
+          <Link href="/dashboard/transactions" className={buttonVariants({ variant: "outline" })}>
+            {t("nav.transactions")}
+          </Link>
+          {user.permissions?.includes("messages.use") && (
+            <Link href="/dashboard/messages" className={buttonVariants({ variant: "outline" })}>
+              {t("nav.messages")}
             </Link>
           )}
           {canUseCrm(user) && (
@@ -93,20 +105,6 @@ function Overview({ user }: { user: User }) {
           {user.roles?.map((role) => <Badge key={role.name}>{role.display_name}</Badge>)}
         </CardContent>
       </Card>
-
-      <section aria-labelledby="modules-heading">
-        <h2 id="modules-heading" className="mb-3 text-lg font-semibold text-brand-800">
-          {t("dashboard.modulesTitle")}
-        </h2>
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {MODULES.map((key) => (
-            <li key={key} className="rounded-lg border border-dashed border-border p-5">
-              <p className="font-semibold text-brand-800">{t(`dashboard.modules.${key}`)}</p>
-              <p className="mt-1 text-sm text-muted-foreground">{t("dashboard.moduleSoon")}</p>
-            </li>
-          ))}
-        </ul>
-      </section>
     </div>
   );
 }

@@ -96,6 +96,8 @@ class OffersAndTransactionsTest extends TestCase
         $this->as($this->buyerAgent);
         $id = $this->postJson('/api/v1/offers', $this->offer(['submit' => false]))->assertCreated()->assertJsonPath('data.status', 'draft')->json('data.id');
         Notification::assertNothingSent();
+        $bySlug = $this->postJson('/api/v1/offers', $this->offer(['property_id' => null, 'property_slug' => $this->listing->slug, 'submit' => false]))->assertCreated();
+        $this->assertSame($this->listing->id, $bySlug->json('data.property.id'));
 
         $this->patchJson("/api/v1/offers/{$id}", ['amount' => 640000])->assertOk()->assertJsonPath('data.amount', 640000);
         $this->postJson("/api/v1/offers/{$id}/submit")->assertOk()->assertJsonPath('data.status', 'submitted');

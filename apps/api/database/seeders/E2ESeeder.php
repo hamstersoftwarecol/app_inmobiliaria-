@@ -8,13 +8,17 @@ use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\AgentLicense;
 use App\Models\Appointment;
+use App\Models\Conversation;
 use App\Models\CrmTask;
+use App\Models\DocumentVersion;
 use App\Models\Lead;
+use App\Models\Offer;
 use App\Models\Office;
 use App\Models\Property;
 use App\Models\PropertyMedia;
 use App\Models\PropertyType;
 use App\Models\Role;
+use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -93,11 +97,21 @@ class E2ESeeder extends Seeder
         foreach (range(1, 7) as $weekday) {
             $valeria->availabilities()->create(['weekday' => $weekday, 'start_time' => '08:00', 'end_time' => '20:00']);
         }
+        // Deals, documents and conversations from earlier runs (files included).
+        $e2eProperties = Property::query()->withTrashed()->where('slug', 'like', 'e2e-%')->pluck('id');
+        DocumentVersion::query()
+            ->whereHas('document', fn ($d) => $d->withTrashed()->whereHas('transaction', fn ($t) => $t->whereIn('property_id', $e2eProperties)))
+            ->get()->each(fn (DocumentVersion $v) => Storage::disk($v->disk)->delete($v->path));
+        Transaction::query()->whereIn('property_id', $e2eProperties)->delete();
+        Offer::query()->whereIn('property_id', $e2eProperties)->delete();
+        Conversation::query()->whereHas('participants', fn ($p) => $p->where('email', 'like', 'e2e.%@example.com'))->delete();
         DB::table('notifications')->whereIn('notifiable_id', User::query()->where('email', 'like', 'e2e.%@example.com')->pluck('id'))->delete();
         $type = PropertyType::query()->where('code', 'single_family')->value('id');
         foreach ([
             ['slug' => 'e2e-12-example-lane-hoboken', 'title' => 'E2E published colonial', 'published' => true, 'street' => '12 Example Lane', 'lat' => 40.7440, 'lng' => -74.0324],
             ['slug' => 'e2e-draft-34-sample-street', 'title' => 'E2E draft townhouse', 'published' => false, 'street' => '34 Sample Street', 'lat' => 40.7452, 'lng' => -74.0301],
+            // Offers/transactions E2E (accepting an offer puts it under contract).
+            ['slug' => 'e2e-56-offer-court-hoboken', 'title' => 'E2E offer cottage', 'published' => true, 'street' => '56 Offer Court', 'lat' => 40.7461, 'lng' => -74.0290],
         ] as $row) {
             Property::query()->withTrashed()->updateOrCreate(['slug' => $row['slug']], [
                 'source' => 'internal', 'title' => $row['title'], 'listing_type' => 'sale', 'status' => 'active',

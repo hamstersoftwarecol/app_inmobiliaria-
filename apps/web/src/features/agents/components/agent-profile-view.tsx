@@ -4,6 +4,7 @@ import { BadgeCheck, Mail, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { ContactForm } from "@/features/crm/components/contact-form";
+import { MessageAgentButton } from "@/features/messages/components/message-agent-button";
 import { useTranslation } from "@/hooks/use-translation";
 import { languageName } from "@/lib/agent-options";
 import type { PublicAgent } from "@/types/api";
@@ -78,6 +79,7 @@ export function AgentProfileView({ agent }: { agent: PublicAgent }) {
               <Mail aria-hidden="true" className="size-4" /> {agent.email}
             </a>
           )}
+          <MessageAgentButton agentSlug={agent.slug} agentName={agent.full_name} />
           {agent.office && (
             <div>
               <p className="font-medium">{t("agents.office")}</p>

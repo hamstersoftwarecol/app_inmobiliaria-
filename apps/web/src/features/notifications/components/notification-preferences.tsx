@@ -9,7 +9,18 @@ import { ApiError } from "@/lib/api-client";
 import { notificationService } from "@/services/notification-service";
 import type { NotificationEvent } from "@/types/api";
 
-const EVENTS: NotificationEvent[] = ["showing_updates", "showing_reminders", "saved_search_alerts", "lead_updates", "task_reminders", "licence_updates", "marketing"];
+const EVENTS: NotificationEvent[] = [
+  "messages",
+  "showing_updates",
+  "showing_reminders",
+  "offer_updates",
+  "transaction_updates",
+  "saved_search_alerts",
+  "lead_updates",
+  "task_reminders",
+  "licence_updates",
+  "marketing",
+];
 
 export function NotificationPreferencesForm() {
   const { t } = useTranslation();

@@ -9,6 +9,8 @@ import { useTranslation } from "@/hooks/use-translation";
 import { formatNumber, formatPrice } from "@/lib/format";
 import type { PublicProperty } from "@/types/api";
 import { ContactForm } from "@/features/crm/components/contact-form";
+import { RecordOfferLink } from "@/features/deals/components/record-offer-link";
+import { MessageAgentButton } from "@/features/messages/components/message-agent-button";
 import { ShowingScheduler } from "@/features/showings/components/showing-scheduler";
 import { FavoriteButton } from "./favorite-button";
 
@@ -147,8 +149,10 @@ export function PropertyDetail({ property }: { property: PublicProperty }) {
                   <Mail aria-hidden="true" className="size-4" /> {property.listing_agent.email}
                 </a>
               )}
+              <MessageAgentButton agentSlug={property.listing_agent.slug} agentName={property.listing_agent.full_name ?? ""} propertySlug={property.slug} />
             </div>
           )}
+          <RecordOfferLink slug={property.slug} title={property.title} />
           <div className="rounded-lg border border-border p-5">
             <ShowingScheduler slug={property.slug} />
           </div>

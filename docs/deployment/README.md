@@ -82,7 +82,11 @@ the `api-media` volume (`MEDIA_DISK=public`) and nginx serves them read-only und
   every 5 minutes (`hitlease:mls:sync-due`) and a nightly reconcile at 03:30 America/New_York.
   These MLS commands do nothing until `MLS_SYNC_ENABLED=true` and a provider is authorized.
   CRM task reminders and showing reminders run every 5 minutes (`hitlease:crm:task-reminders`,
-  `hitlease:showings:reminders`); expired idempotency keys are pruned hourly.
+  `hitlease:showings:reminders`); expired idempotency keys are pruned hourly. Offers past their
+  deadline expire every 5 minutes (`hitlease:offers:expire`) and milestone reminders go out daily
+  at 07:40 America/New_York (`hitlease:transactions:milestone-reminders`). The document retention
+  purge (`hitlease:documents:purge`, dry run unless `--force`) is deliberately **not** scheduled
+  until counsel confirms the retention period.
 * The database user must be able to `CREATE EXTENSION btree_gist` (trusted extension, available in
   the `postgis/postgis` image) for the showings migration, or a DBA creates it beforehand.
   Saved-search alerts run daily at 07:45 and weekly on Mondays at 07:50 America/New_York
@@ -94,6 +98,11 @@ the `api-media` volume (`MEDIA_DISK=public`) and nginx serves them read-only und
 * Media: `MEDIA_DISK=public` needs `php artisan storage:link` and persistent, shared storage for
   every API/queue replica. **Cloudflare R2 is the intended production disk and is blocked** until
   the bucket, credentials and the `league/flysystem-aws-s3-v3` driver are provided.
+* Documents: `DOCUMENTS_DISK=local` keeps files under `storage/app/private` (Compose volume
+  `api-documents`, shared by `api` and `queue`; back it up with the database). The R2 private bucket
+  is the intended production disk (blocked like media). Malware scanning: run ClamAV
+  (`docker compose --profile antivirus up -d`, or a managed clamd) and set `DOCUMENT_SCANNER=clamd`,
+  `CLAMD_HOST`, `CLAMD_PORT`; until then uploads are stored as `unscanned`.
 * Observability: set `SENTRY_LARAVEL_DSN` / OTLP endpoint (integration scheduled for Sprint 12),
   alerts on 5xx rate, queue backlog, failed jobs, MLS sync staleness.
 * Mail: verified sender domain (SPF, DKIM, DMARC).

@@ -16,9 +16,12 @@ export function notificationText(n: AppNotification, t: T): string {
       return t("notifications.types.saved_search", { total: Number(d.total ?? 0), name: String(d.name ?? "") });
     case "showing.reminder":
       return t("notifications.types.showing_reminder", { title: String(d.property_title ?? "") });
+    case "message.new":
+      return t("notifications.types.message", { from: String(d.from ?? "") });
     case "license.status_changed":
       return t("notifications.types.licence", { status: String(d.status ?? "") });
     default:
+      if (n.type?.startsWith("offer.") || n.type?.startsWith("transaction.")) return t("notifications.types.deal", { summary: String(d.summary ?? "") });
       return n.type?.startsWith("showing.")
         ? `${t("notifications.types.showing", { title: String(d.property_title ?? "") })} (${t(`showings.statuses.${String(n.type).slice(8)}`)})`
         : t("notifications.types.generic");

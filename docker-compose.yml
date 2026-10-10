@@ -23,6 +23,8 @@ x-api: &api
   volumes:
     # Listing photos (MEDIA_DISK=public) until the Cloudflare R2 bucket exists.
     - api-media:/var/www/html/storage/app/public
+    # Private transaction documents (DOCUMENTS_DISK=local); never served by nginx.
+    - api-documents:/var/www/html/storage/app/private
   restart: unless-stopped
 
 services:
@@ -99,7 +101,18 @@ services:
           - api-internal
     restart: unless-stopped
 
+  # Optional malware scanning for uploaded documents:
+  #   docker compose --profile antivirus up -d   and set DOCUMENT_SCANNER=clamd, CLAMD_HOST=clamav
+  clamav:
+    image: clamav/clamav:1.4
+    profiles: [antivirus]
+    volumes:
+      - clamav-data:/var/lib/clamav
+    restart: unless-stopped
+
 volumes:
   postgres-data:
   redis-data:
   api-media:
+  api-documents:
+  clamav-data:

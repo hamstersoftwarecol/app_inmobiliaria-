@@ -95,11 +95,26 @@ dependency (not counted as done).
 | NTF-5 | SMS (e.g. reminders) | P2 | ⛔ | Needs an SMS provider and TCPA-compliant consent flow |
 | SHW-5 | Open houses (public events) | P2 | ⏳ | |
 
-## Sprint 9 — Offers, transactions, documents, messaging
+## Sprint 9 — Offers, transactions, documents, messaging (delivered)
 
-State machines (offer & transaction), contingencies, milestones, tasks; private documents with
-versions, signed URLs, access logs, AV scanning, retention; client–agent chat with authorization
-per conversation.
+| ID | Item | Pri | Status | Evidence |
+|---|---|---|---|---|
+| DEAL-1 | Offer state machine (draft → submitted → countered/accepted/rejected/withdrawn/expired), counter-offer chain, audited transitions, `Idempotency-Key` | P0 | ✅ | `OffersAndTransactionsTest`, `/dashboard/offers`, E2E `deals.spec.ts` |
+| DEAL-2 | Accepting opens one transaction per property (partial unique index) and puts internal listings under contract | P0 | ✅ | `OffersAndTransactionsTest` |
+| DEAL-3 | Transactions: default NJ milestones (attorney review 3 business days, contingencies, closing), custom milestones, parties, close/cancel | P0 | ✅ | `OffersAndTransactionsTest`, `/dashboard/transactions` |
+| DEAL-4 | Milestone reminders (2 agency days before, once per due date); offers expire at their deadline | P1 | ✅ | `OffersAndTransactionsTest` |
+| DOC-1 | Private, versioned documents (PDF/JPG/PNG/DOCX/XLSX ≤25 MB), internal vs shared with clients, SHA-256 | P0 | ✅ | `DocumentsTest` |
+| DOC-2 | Short-lived signed downloads (5 min), access log (upload, link, download), audited visibility changes | P0 | ✅ | `DocumentsTest`, E2E `deals.spec.ts` |
+| DOC-3 | Malware scanning with ClamAV (`clamd` INSTREAM); files downloadable only after a clean scan | P0 | ⛔ | Adapter + tests done; **blocked** until a clamd service is deployed and `DOCUMENT_SCANNER=clamd` is set (Compose profile `antivirus` provided) |
+| DOC-4 | Retention: date set on close/cancel (6 years, configurable); purge command (dry run unless `--force`) | P1 | ⏳ | Period to be confirmed by counsel; purge intentionally not scheduled |
+| DOC-5 | Documents on Cloudflare R2 (private bucket) | P1 | ⛔ | Needs the bucket and credentials; local private disk meanwhile |
+| MSG-1 | Private conversations (participants only, no admin override), clients → active agents only, deal conversations | P0 | ✅ | `MessagingTest`, `/dashboard/messages`, E2E `deals.spec.ts` |
+| MSG-2 | New-message notifications (in-app always; e-mail at most hourly per conversation, without the text) | P1 | ✅ | `MessagingTest` |
+| MSG-3 | Real-time chat (Laravel Reverb) and attachments | P2 | ⏳ | Threads poll every 15 s meanwhile |
+| DEAL-5 | E-signature integration | P2 | ⛔ | Needs a provider decision and contract (e.g. DocuSign) |
+
+Offers are records for the agents' workflow; the binding contract is the signed agreement reviewed
+by the parties' attorneys (stated in the UI).
 
 ## Sprint 10 — Mobile feature parity
 

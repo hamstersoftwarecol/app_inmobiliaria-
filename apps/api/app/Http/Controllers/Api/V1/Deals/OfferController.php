@@ -71,7 +71,8 @@ class OfferController extends Controller
     {
         Gate::authorize('create', Offer::class);
         $data = $request->validate([
-            'property_id' => ['required', 'integer', Rule::exists('properties', 'id')->whereNull('deleted_at')],
+            'property_id' => ['required_without:property_slug', 'nullable', 'integer', Rule::exists('properties', 'id')->whereNull('deleted_at')],
+            'property_slug' => ['required_without:property_id', 'nullable', 'string', Rule::exists('properties', 'slug')->whereNull('deleted_at')],
             'lead_id' => ['nullable', 'integer'],
             'buyer_agent_id' => ['nullable', 'integer'],
             'buyer_agent_external' => ['nullable', 'string', 'max:200'],
@@ -82,7 +83,7 @@ class OfferController extends Controller
         if (isset($data['lead_id'])) {
             Gate::authorize('view', Lead::query()->findOrFail($data['lead_id']));
         }
-        $offer = $this->offers->create($request->user(), Property::query()->findOrFail($data['property_id']), $data, $request->boolean('submit'));
+        $offer = $this->offers->create($request->user(), isset($data['property_id']) ? Property::query()->findOrFail($data['property_id']) : Property::query()->where('slug', $data['property_slug'])->firstOrFail(), $data, $request->boolean('submit'));
 
         return (new OfferResource($offer->load(['property', 'buyerAgent.user'])))->response()->setStatusCode(201);
     }

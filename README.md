@@ -10,18 +10,23 @@ central REST API.
 | Web | Next.js 15 · TypeScript · Tailwind 4 · shadcn/ui · TanStack Query · Zustand · RHF + Zod | [`apps/web`](apps/web) |
 | Mobile | Flutter 3.47 · Riverpod · GoRouter · Dio · Freezed · secure storage | [`apps/mobile`](apps/mobile) |
 
-## Status (Sprint 1)
+## Status (through Sprint 9)
 
-**Done and tested:** architecture & docs, monorepo, Docker/Compose, CI; authentication (cookie for
-web, tokens for mobile), TOTP MFA with recovery codes, password reset, e-mail verification,
-session management, brute-force protection; RBAC (6 roles, 49 permissions, hierarchy guards);
-audit log; admin API for users/roles/audit/MLS providers; agencies, offices, agent profiles, public agent directory and licence verification workflow (Sprint 2); MLS engine contract with a RESO Web API
-adapter, normalization and compliance rules; web and mobile auth flows.
+**Done and tested (web + API):** authentication (cookie for web, tokens for mobile), TOTP MFA,
+password reset, e-mail verification, sessions, brute-force protection; RBAC (6 roles, 50
+permissions, hierarchy guards) and audit log; agencies, offices, agents and licence verification;
+MLS engine (RESO Web API adapter, normalization, compliance rules, sync monitor); listings with
+photos and publication workflow; search (filters, radius/bbox/polygon, sorting, autocomplete),
+favorites and saved-search alerts; CRM (inquiries, leads pipeline, timeline, tasks, reports);
+showings (availability, DST-safe slots, no double-booking) and notification center with e-mail
+preferences; offers and counter-offers, transactions with NJ milestones, private versioned
+documents with signed downloads, and private messaging.
 
-**Blocked by external authorization:** real MLS connections (no licences/specs/credentials yet).
-**Not built yet:** properties, search, maps, CRM, showings, offers, documents, messaging — see
-[`docs/product-backlog.md`](docs/product-backlog.md). The UI labels these as "in development";
-no listings are invented.
+**Blocked by external authorization or infrastructure:** real MLS connections (licences, specs,
+credentials), maps (Mapbox token), push (Firebase), Cloudflare R2 storage, ClamAV deployment for
+document scanning, production mail and hosting. Nothing is simulated in their place.
+**In progress:** mobile parity (Sprint 10), admin KPIs (Sprint 11), hardening (Sprint 12) — see
+[`docs/product-backlog.md`](docs/product-backlog.md).
 
 ## Quick start
 

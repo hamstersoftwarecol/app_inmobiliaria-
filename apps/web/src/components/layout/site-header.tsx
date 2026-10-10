@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { Building2, LogOut } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { MessagesLink } from "@/features/messages/components/messages-link";
 import { NotificationBell } from "@/features/notifications/components/notification-bell";
 import { canAccessAdmin, useCurrentUser, useLogout } from "@/hooks/use-auth";
 import { useTranslation } from "@/hooks/use-translation";
@@ -51,6 +52,7 @@ export function SiteHeader() {
                   {t("nav.admin")}
                 </Link>
               )}
+              <MessagesLink />
               <NotificationBell />
               <Link href="/dashboard" className={buttonVariants({ variant: "outline", size: "sm" })}>
                 {t("nav.dashboard")}

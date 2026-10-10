@@ -142,12 +142,35 @@ defaults when a role is first created; the super admin role always gets everythi
   people). Security e-mails are not optional. Marketing is opt-in, timestamped and audited.
 * Rate limits: showing requests/bookings 10/min per user; unsubscribe and inquiries 5/min, 20/h.
 
-## 3. Planned controls (by sprint)
+### Offers, transactions, documents and messaging (Sprint 9)
+
+* Offer actions follow the side of the deal: only the author side edits, submits or withdraws;
+  only the responding side counters, accepts or rejects (listing agent for our listings; for outside
+  listings the buyer's agent records the other party's response). Every transition is audited, and
+  amounts never appear in e-mails.
+* One accepted offer and one open transaction per property are enforced by partial unique indexes.
+* Documents live on a private disk (never web-served), are listed and linked only after
+  `DocumentPolicy` checks (clients see `shared` documents of deals they are linked to), and are
+  downloaded through 5-minute signed URLs as attachments with `nosniff` and a sandbox CSP. Uploads
+  are limited by extension/MIME and size; every upload, link and download is logged with IP and user
+  agent; visibility changes and deletions are audited.
+* With `DOCUMENT_SCANNER=clamd`, new versions are `pending` until ClamAV reports them clean; infected
+  files are blocked (403) and logged as security events; scanner errors retry with backoff and never
+  count as clean. **Blocked:** no clamd service is deployed yet, so production uploads are
+  `unscanned` (allowed) until it is.
+* Retention dates are set on close/cancel (6 years by default — to be confirmed by counsel); the
+  purge command is a dry run unless `--force` and is not scheduled.
+* Conversations are visible only to their participants (no administrator override). Clients can
+  start conversations only with active agents (or with everyone on a deal they belong to). Messages
+  are immutable; e-mail alerts never include message text and are sent at most hourly per
+  conversation. Rate limits: 20 new conversations and 60 messages per minute per user.
+
+
 
 | Sprint | Control |
 |---|---|
 | 4 | R2 storage for media (private bucket for documents), malware scanning for uploads |
-| 9 | Document access policies, signed URLs (≤5 min), access logs, antivirus scanning (ClamAV) before availability, retention policies, `Idempotency-Key` on offers/transactions/appointments |
+| 9 | ✅ Delivered (see above); ClamAV deployment and R2 private bucket remain blocked on infrastructure |
 | 11 | Admin audit UI, alerting on suspicious security events |
 | 12 | DAST (OWASP ZAP baseline) in CI, dependency/license review, backup restore drills, penetration test |
 

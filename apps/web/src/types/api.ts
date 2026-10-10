@@ -484,5 +484,138 @@ export interface AppNotification {
   created_at: string | null;
 }
 
-export type NotificationEvent = "showing_updates" | "showing_reminders" | "lead_updates" | "task_reminders" | "saved_search_alerts" | "licence_updates" | "marketing";
+export type NotificationEvent =
+  | "showing_updates"
+  | "showing_reminders"
+  | "lead_updates"
+  | "task_reminders"
+  | "saved_search_alerts"
+  | "licence_updates"
+  | "offer_updates"
+  | "transaction_updates"
+  | "messages"
+  | "marketing";
 export type NotificationPreferences = Record<NotificationEvent, { mail: boolean; consented_at: string | null }>;
+
+export type OfferStatus = "draft" | "submitted" | "countered" | "accepted" | "rejected" | "withdrawn" | "expired" | "closed" | "terminated";
+export type Financing = "cash" | "conventional" | "fha" | "va" | "usda" | "other";
+export type Contingency = "inspection" | "appraisal" | "financing" | "attorney_review" | "sale_of_home" | "hoa_review";
+
+export interface Offer {
+  id: number;
+  parent_id: number | null;
+  side: "buyer" | "seller";
+  status: OfferStatus;
+  property: { id: number; slug: string; title: string; list_price: number | null } | null;
+  buyer_name: string;
+  buyer_agent: { id: number; full_name: string | null } | null;
+  buyer_agent_external: string | null;
+  lead_id: number | null;
+  amount: number;
+  earnest_money: number | null;
+  financing: Financing;
+  down_payment_percent: number | null;
+  closing_date: string | null;
+  contingencies: Contingency[];
+  terms: string | null;
+  expires_at: string | null;
+  submitted_at: string | null;
+  responded_at: string | null;
+  response_note: string | null;
+  transaction_id?: number | null;
+  can: { edit: boolean; submit: boolean; withdraw: boolean; respond: boolean } | null;
+  created_at: string | null;
+}
+
+export interface OfferTerms {
+  amount: number;
+  earnest_money?: number | null;
+  financing: Financing;
+  down_payment_percent?: number | null;
+  closing_date?: string | null;
+  contingencies?: Contingency[];
+  terms?: string | null;
+  expires_at?: string | null;
+}
+
+export type TransactionStatus = "open" | "closed" | "cancelled";
+export type ParticipantRole = "buyer" | "seller" | "attorney" | "lender" | "title" | "other";
+
+export interface TransactionMilestone {
+  id: number;
+  type: string;
+  title: string;
+  due_date: string | null;
+  completed_at: string | null;
+  notes: string | null;
+}
+
+export interface Transaction {
+  id: number;
+  status: TransactionStatus;
+  property: { id: number; slug: string; title: string; street_address: string | null; city: string | null; state: string | null } | null;
+  offer_id: number | null;
+  sale_price: number;
+  contract_date: string | null;
+  closing_date: string | null;
+  closed_at: string | null;
+  cancelled_at: string | null;
+  cancel_reason: string | null;
+  listing_agent: { id: number; user_id: number; full_name: string | null } | null;
+  buyer_agent: { id: number; user_id: number; full_name: string | null } | null;
+  participants: { id: number; role: ParticipantRole; name: string; user_id: number | null; email: string | null; phone: string | null }[];
+  milestones: TransactionMilestone[];
+  can: { manage: boolean };
+  created_at: string | null;
+}
+
+export type DocumentCategory = "contract" | "disclosure" | "inspection" | "appraisal" | "financing" | "title" | "closing" | "identification" | "other";
+export type ScanStatus = "pending" | "clean" | "infected" | "unscanned" | "error";
+
+export interface DealDocument {
+  id: number;
+  title: string;
+  category: DocumentCategory;
+  visibility: "internal" | "shared";
+  retain_until: string | null;
+  versions: {
+    id: number;
+    version: number;
+    original_name: string;
+    mime_type: string;
+    size: number;
+    sha256: string;
+    scan_status: ScanStatus;
+    uploaded_by: string | null;
+    created_at: string | null;
+  }[];
+  created_at: string | null;
+}
+
+export interface DocumentList {
+  data: DealDocument[];
+  meta: { can_upload: boolean; scan_required: boolean; max_kb: number };
+}
+
+export interface ConversationSummary {
+  id: number;
+  subject: string | null;
+  property: { slug: string; title: string } | null;
+  transaction_id: number | null;
+  participants: { id: number; full_name: string }[];
+  last_message: { body: string; mine: boolean; created_at: string | null } | null;
+  last_message_at: string | null;
+  unread: number;
+}
+
+export interface ChatMessage {
+  id: number;
+  body: string;
+  author: { id: number; full_name: string } | null;
+  mine: boolean;
+  created_at: string | null;
+}
+
+export interface Conversation extends ConversationSummary {
+  messages: ChatMessage[];
+}

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hitlease Real Estate API
-  version: 1.0.0-alpha.6
+  version: 1.0.0-alpha.7
   summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
   description: |
     Central API consumed by the Next.js web app and the Flutter mobile app.
@@ -65,8 +65,12 @@ tags:
     description: Showing availability, requests and bookings (no double-booking, DST-safe), reminders.
   - name: Notifications
     description: In-app notification center, e-mail preferences and one-click unsubscribe.
-  - name: Transactions
-    description: Planned (Sprint 9).
+  - name: Deals
+    description: Offers and counter-offers, transactions, milestones and parties (staff need MFA).
+  - name: Documents
+    description: Private, versioned transaction documents with signed short-lived downloads and optional ClamAV scanning.
+  - name: Messaging
+    description: Private conversations between clients, agents and staff.
 
 paths:
   /health:
@@ -2040,7 +2044,7 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
-  # ------------------------------------------------------------------ Planned
+  # ------------------------------------------------------------------ Public inquiries
   /inquiries:
     post:
       tags: [CRM]
@@ -2853,7 +2857,7 @@ paths:
                 mail:
                   type: object
                   additionalProperties: { type: boolean }
-                  description: "Keys: showing_updates, showing_reminders, lead_updates, task_reminders, saved_search_alerts, licence_updates, marketing"
+                  description: "Keys: showing_updates, showing_reminders, lead_updates, task_reminders, saved_search_alerts, licence_updates, offer_updates, transaction_updates, messages, marketing"
       responses:
         "200":
           description: Preferences
@@ -2892,14 +2896,764 @@ paths:
         "422": { $ref: "#/components/responses/ValidationError" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  # ------------------------------------------------------------------ Offers & transactions (Sprint 9)
+  /offers:
+    get:
+      tags: [Deals]
+      operationId: listOffers
+      summary: Latest offer of each negotiation the user may see (agents on either side; `offers.view_any`)
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/OfferStatus" } }
+        - { name: property_id, in: query, schema: { type: integer } }
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/Page"
+      responses:
+        "200":
+          description: Offers
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OfferPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Deals]
+      operationId: createOffer
+      summary: "Record a buyer's offer (agents act as the buyer's agent; managers may name one). `submit: true` sends it at once"
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OfferCreateRequest" }
+      responses:
+        "201":
+          description: Created offer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /offers/{offer}:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Deals]
+      operationId: getOfferChain
+      summary: The whole negotiation (original offer and counters), oldest first
+      responses:
+        "200":
+          description: Negotiation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Offer" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Deals]
+      operationId: updateOfferDraft
+      summary: Edit a draft (author side only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OfferTerms" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/submit:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: submitOffer
+      summary: "Submit a draft to the other side"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/withdraw:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: withdrawOffer
+      summary: "Withdraw a draft or submitted offer (author side)"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string, maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/reject:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: rejectOffer
+      summary: "Reject a submitted offer (responding side)"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string, maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/counter:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: counterOffer
+      summary: "Counter a submitted offer (responding side): the offer becomes `countered` and a new offer from the other side is submitted"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/OfferTerms"
+                - type: object
+                  properties:
+                    note: { type: string, maxLength: 1000 }
+      responses:
+        "201":
+          description: Counter-offer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/accept:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: acceptOffer
+      summary: "Accept (responding side): opens the transaction with default NJ milestones and puts an internal listing under contract (`property_under_contract` if one is already open)"
+      responses:
+        "201":
+          description: Opened transaction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
   /transactions:
     get:
-      tags: [Transactions]
+      tags: [Deals]
       operationId: listTransactions
-      summary: "[Planned] Transactions"
-      x-status: planned
+      summary: Transactions the user works on or takes part in (`transactions.view_any` sees all)
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [open, closed, cancelled] } }
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/Page"
       responses:
-        "200": { $ref: "#/components/responses/Planned" }
+        "200":
+          description: Transactions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransactionPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /transactions/{transaction}:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Deals]
+      operationId: getTransaction
+      summary: "A transaction (agents on it, linked clients, `transactions.view_any`); party contact details only for managers"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Deals]
+      operationId: updateTransaction
+      summary: Change the closing date (open transactions; agents on it or `transactions.manage_any`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                closing_date: { type: [string, "null"], format: date }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/close:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Deals]
+      operationId: closeTransaction
+      summary: Mark as closed (listing → closed; documents get their retention date)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                closing_date: { type: string, format: date, description: "Today or earlier (defaults to today, agency time)" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/cancel:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Deals]
+      operationId: cancelTransaction
+      summary: Cancel (listing back to active; the accepted offer becomes `terminated`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/milestones:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Deals]
+      operationId: addMilestone
+      summary: Add a custom milestone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, maxLength: 200 }
+                due_date: { type: [string, "null"], format: date }
+                notes: { type: [string, "null"], maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/milestones/{milestone}:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+      - { name: milestone, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [Deals]
+      operationId: updateMilestone
+      summary: Edit, reschedule (re-arms its reminder) or complete a milestone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, maxLength: 200 }
+                due_date: { type: [string, "null"], format: date }
+                notes: { type: [string, "null"], maxLength: 1000 }
+                completed: { type: boolean }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Deals]
+      operationId: deleteMilestone
+      summary: Delete a custom milestone (default milestones can only be edited)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /transactions/{transaction}/participants:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Deals]
+      operationId: addParticipant
+      summary: "Add a party; an e-mail matching an active account links it (shared documents, deal conversation)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role, name]
+              properties:
+                role: { type: string, enum: [buyer, seller, attorney, lender, title, other] }
+                name: { type: string, maxLength: 200 }
+                email: { type: [string, "null"], format: email }
+                phone: { type: [string, "null"] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/participants/{participant}:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+      - { name: participant, in: path, required: true, schema: { type: integer } }
+    delete:
+      tags: [Deals]
+      operationId: removeParticipant
+      summary: Remove a party
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /transactions/{transaction}/documents:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Documents]
+      operationId: listDocuments
+      summary: "Documents of a transaction (clients see only `shared` ones)"
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Document" } }
+                  meta:
+                    type: object
+                    properties:
+                      can_upload: { type: boolean }
+                      scan_required: { type: boolean, description: "When true, files are downloadable only after a clean malware scan" }
+                      max_kb: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Documents]
+      operationId: uploadDocument
+      summary: "Upload a document (PDF, JPG, PNG, DOCX, XLSX; size limit in `meta.max_kb`). Stored on a private disk"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, title, category, visibility]
+              properties:
+                file: { type: string, format: binary }
+                title: { type: string, maxLength: 200 }
+                category: { $ref: "#/components/schemas/DocumentCategory" }
+                visibility: { type: string, enum: [internal, shared] }
+      responses:
+        "201":
+          description: Uploaded document
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Document" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /documents/{document}:
+    parameters:
+      - { name: document, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [Documents]
+      operationId: updateDocument
+      summary: Rename, re-categorise or change visibility (visibility changes are audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, maxLength: 200 }
+                category: { $ref: "#/components/schemas/DocumentCategory" }
+                visibility: { type: string, enum: [internal, shared] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Document" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Documents]
+      operationId: deleteDocument
+      summary: Delete (soft; files are kept until the retention purge)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /documents/{document}/versions:
+    parameters:
+      - { name: document, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Documents]
+      operationId: uploadDocumentVersion
+      summary: Upload a new version
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201":
+          description: Document with the new version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Document" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /documents/{document}/versions/{version}/link:
+    parameters:
+      - { name: document, in: path, required: true, schema: { type: integer } }
+      - { name: version, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Documents]
+      operationId: createDocumentLink
+      summary: "Short-lived signed download URL (logged). `document_unavailable`: 409 while a scan is pending, 403 if malware was found"
+      responses:
+        "200":
+          description: Signed link
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      url: { type: string, format: uri }
+                      expires_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /documents/download/{version}:
+    parameters:
+      - { name: version, in: path, required: true, schema: { type: integer } }
+      - { name: expires, in: query, required: true, schema: { type: integer } }
+      - { name: signature, in: query, required: true, schema: { type: string } }
+    get:
+      tags: [Documents]
+      operationId: downloadDocument
+      summary: Download through a signed link (no session; attachment with `nosniff` and a sandbox CSP)
+      security: []
+      responses:
+        "200":
+          description: File
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  # ------------------------------------------------------------------ Messaging (Sprint 9)
+  /conversations:
+    get:
+      tags: [Messaging]
+      operationId: listConversations
+      summary: The user's conversations, most recent first (participants only — no administrator access)
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/Page"
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/ConversationSummary" } }
+                  meta:
+                    type: object
+                    properties:
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                      total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Messaging]
+      operationId: startConversation
+      summary: "Start (or continue) a conversation. Clients can write to active agents only; `transaction_id` includes everyone on the deal"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                recipient_ids: { type: array, items: { type: integer }, minItems: 1, maxItems: 10 }
+                agent_slug: { type: string, description: "Public agent slug (from listing or profile pages)" }
+                transaction_id: { type: integer }
+                property_id: { type: integer }
+                property_slug: { type: string }
+                subject: { type: string, maxLength: 200 }
+                body: { type: string, minLength: 1, maxLength: 5000 }
+      responses:
+        "201":
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Conversation" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /conversations/unread-count:
+    get:
+      tags: [Messaging]
+      operationId: unreadMessageCount
+      summary: Unread messages across all conversations
+      responses:
+        "200": { $ref: "#/components/responses/UnreadCount" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /conversations/contacts:
+    get:
+      tags: [Messaging]
+      operationId: messageContacts
+      summary: People the user may message (clients see active agents; agents and staff also see brokers/managers)
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Contacts (max 20)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        full_name: { type: string }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /conversations/{conversation}:
+    parameters:
+      - { name: conversation, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Messaging]
+      operationId: getConversation
+      summary: Messages (latest 200) — marks the conversation read
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Conversation" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /conversations/{conversation}/messages:
+    parameters:
+      - { name: conversation, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Messaging]
+      operationId: sendMessage
+      summary: "Send a message (immutable). Recipients get an in-app notification; e-mail at most hourly per conversation, without the text"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 5000 }
+      responses:
+        "201":
+          description: Sent message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ChatMessage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
 components:
   securitySchemes:
@@ -2996,8 +3750,6 @@ components:
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
-    Planned:
-      description: Not implemented yet (currently 404).
 
   schemas:
     Error:
@@ -3933,3 +4685,229 @@ components:
       properties:
         internal_field: { type: string, pattern: "^[a-z_]+$", examples: [list_price] }
         provider_field: { type: string, examples: [ListPrice] }
+
+    OfferStatus:
+      type: string
+      enum: [draft, submitted, countered, accepted, rejected, withdrawn, expired, closed, terminated]
+
+    OfferTerms:
+      type: object
+      properties:
+        amount: { type: number, exclusiveMinimum: 0 }
+        earnest_money: { type: [number, "null"], minimum: 0 }
+        financing: { type: string, enum: [cash, conventional, fha, va, usda, other] }
+        down_payment_percent: { type: [number, "null"], minimum: 0, maximum: 100 }
+        closing_date: { type: [string, "null"], format: date, description: Today or later }
+        contingencies:
+          type: [array, "null"]
+          maxItems: 10
+          items: { type: string, enum: [attorney_review, inspection, financing, appraisal, sale_of_home, hoa_review] }
+        terms: { type: [string, "null"], maxLength: 5000 }
+        expires_at: { type: [string, "null"], format: date-time, description: "Response deadline; past it the offer expires (checked every 5 minutes)" }
+
+    OfferCreateRequest:
+      allOf:
+        - $ref: "#/components/schemas/OfferTerms"
+        - type: object
+          required: [buyer_name, amount, financing]
+          properties:
+            property_id: { type: integer, description: "Either property_id or property_slug" }
+            property_slug: { type: string }
+            lead_id: { type: [integer, "null"] }
+            buyer_agent_id: { type: [integer, "null"], description: "Managers only; agents are always the buyer's agent themselves" }
+            buyer_agent_external: { type: [string, "null"], maxLength: 200 }
+            buyer_name: { type: string, maxLength: 200 }
+            submit: { type: boolean }
+
+    Offer:
+      type: object
+      properties:
+        id: { type: integer }
+        parent_id: { type: [integer, "null"] }
+        side: { type: string, enum: [buyer, seller] }
+        status: { $ref: "#/components/schemas/OfferStatus" }
+        property:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            title: { type: string }
+            list_price: { type: [number, "null"] }
+        buyer_name: { type: string }
+        buyer_agent:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            full_name: { type: [string, "null"] }
+        buyer_agent_external: { type: [string, "null"] }
+        lead_id: { type: [integer, "null"] }
+        amount: { type: number }
+        earnest_money: { type: [number, "null"] }
+        financing: { type: string }
+        down_payment_percent: { type: [number, "null"] }
+        closing_date: { type: [string, "null"], format: date }
+        contingencies: { type: array, items: { type: string } }
+        terms: { type: [string, "null"] }
+        expires_at: { type: [string, "null"], format: date-time }
+        submitted_at: { type: [string, "null"], format: date-time }
+        responded_at: { type: [string, "null"], format: date-time }
+        response_note: { type: [string, "null"] }
+        transaction_id: { type: [integer, "null"] }
+        can:
+          type: [object, "null"]
+          properties:
+            edit: { type: boolean }
+            submit: { type: boolean }
+            withdraw: { type: boolean }
+            respond: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    OfferPage:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: "#/components/schemas/Offer" } }
+
+    Transaction:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [open, closed, cancelled] }
+        property:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            title: { type: string }
+            street_address: { type: [string, "null"] }
+            city: { type: [string, "null"] }
+            state: { type: [string, "null"] }
+        offer_id: { type: [integer, "null"] }
+        sale_price: { type: number }
+        contract_date: { type: [string, "null"], format: date }
+        closing_date: { type: [string, "null"], format: date }
+        closed_at: { type: [string, "null"], format: date-time }
+        cancelled_at: { type: [string, "null"], format: date-time }
+        cancel_reason: { type: [string, "null"] }
+        listing_agent: { $ref: "#/components/schemas/DealAgent" }
+        buyer_agent: { $ref: "#/components/schemas/DealAgent" }
+        participants:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              role: { type: string, enum: [buyer, seller, attorney, lender, title, other] }
+              name: { type: string }
+              user_id: { type: [integer, "null"] }
+              email: { type: [string, "null"], description: Only for users who manage the transaction }
+              phone: { type: [string, "null"], description: Only for users who manage the transaction }
+        milestones:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              type: { type: string, enum: [attorney_review, inspection, appraisal, mortgage_commitment, title_search, final_walkthrough, closing, custom] }
+              title: { type: string }
+              due_date: { type: [string, "null"], format: date }
+              completed_at: { type: [string, "null"], format: date-time }
+              notes: { type: [string, "null"] }
+        can:
+          type: object
+          properties:
+            manage: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    DealAgent:
+      type: [object, "null"]
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        full_name: { type: [string, "null"] }
+
+    TransactionPage:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: "#/components/schemas/Transaction" } }
+
+    DocumentCategory:
+      type: string
+      enum: [contract, disclosure, inspection, appraisal, financing, title, closing, identification, other]
+
+    Document:
+      type: object
+      description: Storage paths are never exposed; downloads use signed links.
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        category: { $ref: "#/components/schemas/DocumentCategory" }
+        visibility: { type: string, enum: [internal, shared] }
+        retain_until: { type: [string, "null"], format: date }
+        versions:
+          type: array
+          description: Newest first
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              version: { type: integer }
+              original_name: { type: string }
+              mime_type: { type: string }
+              size: { type: integer }
+              sha256: { type: string }
+              scan_status: { type: string, enum: [pending, clean, infected, unscanned, error] }
+              uploaded_by: { type: [string, "null"] }
+              created_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    ConversationSummary:
+      type: object
+      properties:
+        id: { type: integer }
+        subject: { type: [string, "null"] }
+        property:
+          type: [object, "null"]
+          properties:
+            slug: { type: string }
+            title: { type: string }
+        transaction_id: { type: [integer, "null"] }
+        participants:
+          type: array
+          description: Other participants
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              full_name: { type: string }
+        last_message:
+          type: [object, "null"]
+          properties:
+            body: { type: string, description: First 140 characters }
+            mine: { type: boolean }
+            created_at: { type: string, format: date-time }
+        last_message_at: { type: [string, "null"], format: date-time }
+        unread: { type: integer }
+
+    Conversation:
+      allOf:
+        - $ref: "#/components/schemas/ConversationSummary"
+        - type: object
+          properties:
+            messages: { type: array, items: { $ref: "#/components/schemas/ChatMessage" } }
+
+    ChatMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        body: { type: string }
+        author:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+        mine: { type: boolean }
+        created_at: { type: string, format: date-time }

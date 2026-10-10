@@ -4,8 +4,10 @@ namespace App\Http\Controllers\Api\V1\Messaging;
 
 use App\Application\Messaging\MessagingService;
 use App\Http\Controllers\Controller;
+use App\Models\Agent;
 use App\Models\Conversation;
 use App\Models\Message;
+use App\Models\Property;
 use App\Models\Transaction;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
@@ -47,16 +49,25 @@ class ConversationController extends Controller
     {
         Gate::authorize('messages.use');
         $data = $request->validate([
-            'recipient_ids' => ['required_without:transaction_id', 'array', 'min:1', 'max:10'],
+            'recipient_ids' => ['required_without_all:transaction_id,agent_slug', 'array', 'min:1', 'max:10'],
+            'agent_slug' => ['nullable', 'string', 'max:120'],
             'recipient_ids.*' => ['integer', 'distinct'],
             'transaction_id' => ['nullable', 'integer'],
             'property_id' => ['nullable', 'integer', 'exists:properties,id'],
+            'property_slug' => ['nullable', 'string', 'max:255'],
             'subject' => ['nullable', 'string', 'max:200'],
             'body' => ['required', 'string', 'min:1', 'max:5000'],
         ]);
 
         $transaction = null;
         $recipients = $data['recipient_ids'] ?? [];
+        // Public pages know agents and listings by slug only.
+        if (isset($data['agent_slug'])) {
+            $recipients[] = Agent::query()->where('slug', $data['agent_slug'])->where('status', 'active')->firstOrFail()->user_id;
+        }
+        if (isset($data['property_slug'])) {
+            $data['property_id'] = Property::query()->where('slug', $data['property_slug'])->value('id') ?? abort(404);
+        }
         if (isset($data['transaction_id'])) {
             $transaction = Transaction::query()->findOrFail($data['transaction_id']);
             Gate::authorize('view', $transaction);

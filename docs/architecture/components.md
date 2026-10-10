@@ -51,9 +51,9 @@ flowchart LR
 | Agency & Agents | **Implemented** (Sprint 2) | Agencies, offices (PostGIS), agent profiles, public directory, licence verification workflow + daily expiry | `AgentProfileService`, `LicenseVerificationService`, `AgentPolicy`, `AgentLicensePolicy`, `LicenseStatus` |
 | CRM | **Implemented** (Sprint 7) | Inquiries, leads, pipeline, timeline, tasks and reminders, duplicates/merge, reports | `LeadService`, `LeadPolicy`, `CrmTaskPolicy`, `CrmReports`, `SendCrmTaskReminders` |
 | Scheduling | **Implemented** (Sprint 8); open houses planned | Showings, availability, time off, slots (DST-safe), reminders, idempotent requests | `ShowingSlots`, `AppointmentService`, `HonorIdempotencyKey`, `SendShowingReminders` |
-| Transactions | Planned (Sprint 9) | Offers, transactions, milestones, contingencies | — |
-| Documents | Planned (Sprint 9) | Private storage, versions, signed URLs, access logs, AV scan | — |
-| Messaging | Planned (Sprint 8–9) | Conversations, Reverb WebSockets, read receipts | — |
+| Transactions | **Implemented** (Sprint 9); e-signature blocked | Offers and counters, transactions, NJ default milestones, parties, reminders, expiry | `OfferService`, `TransactionService`, `ExpireOffers`, `SendMilestoneReminders` |
+| Documents | **Implemented** (Sprint 9); ClamAV and R2 blocked on infrastructure | Private storage, versions, signed URLs (5 min), access logs, AV scan adapter, retention purge | `DocumentService`, `ClamdScanner`, `ScanDocumentVersion`, `PurgeExpiredDocuments` |
+| Messaging | **Implemented** (Sprint 9); Reverb real-time planned | Participant-only conversations, read receipts, throttled e-mail alerts | `MessagingService`, `ConversationController`, `NewMessageNotification` |
 | Notifications | **Implemented** for mail + in-app (Sprint 8); push/SMS blocked | Notification center, per-category preferences, consent, one-click unsubscribe | `NotificationPreferences`, `HonorsPreferences`, `NotificationController` |
 | AI assistant | Planned (post-MVP) | NL → structured filters, agent writing aids, guarded by MLS/PII rules | — |
 
