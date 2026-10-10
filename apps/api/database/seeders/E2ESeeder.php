@@ -8,6 +8,8 @@ use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\AgentLicense;
 use App\Models\Office;
+use App\Models\Property;
+use App\Models\PropertyType;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -67,5 +69,22 @@ class E2ESeeder extends Seeder
 
         $agent('e2e.verified@example.com', 'Valeria', 'Verified', 'e2e-valeria-verified', 'TESTE2E0001', LicenseStatus::Verified);
         $agent('e2e.pending@example.com', 'Pablo', 'Pending', 'e2e-pablo-pending', 'TESTE2E0002', LicenseStatus::PendingVerification);
+
+        // Listings: one published, one draft ready for a broker to publish.
+        $valeria = Agent::query()->where('slug', 'e2e-valeria-verified')->firstOrFail();
+        $type = PropertyType::query()->where('code', 'single_family')->value('id');
+        foreach ([
+            ['slug' => 'e2e-12-example-lane-hoboken', 'title' => 'E2E published colonial', 'published' => true, 'street' => '12 Example Lane'],
+            ['slug' => 'e2e-draft-34-sample-street', 'title' => 'E2E draft townhouse', 'published' => false, 'street' => '34 Sample Street'],
+        ] as $row) {
+            Property::query()->withTrashed()->updateOrCreate(['slug' => $row['slug']], [
+                'source' => 'internal', 'title' => $row['title'], 'listing_type' => 'sale', 'status' => 'active',
+                'property_type_id' => $type, 'list_price' => 650000, 'street_address' => $row['street'], 'city' => 'Hoboken',
+                'county' => 'Hudson', 'state' => 'NJ', 'postal_code' => '07030', 'bedrooms' => 3, 'bathrooms' => 2,
+                'living_area_sqft' => 1800, 'description' => 'Fictitious listing used by automated tests.',
+                'listing_agent_id' => $valeria->id, 'agency_id' => $agency->id,
+                'is_published' => $row['published'], 'published_at' => $row['published'] ? now() : null, 'deleted_at' => null,
+            ]);
+        }
     }
 }

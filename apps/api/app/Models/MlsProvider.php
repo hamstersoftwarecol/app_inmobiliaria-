@@ -45,6 +45,14 @@ class MlsProvider extends Model
         return $this->hasOne(MlsDisplayRule::class);
     }
 
+    /**
+     * @return HasMany<MlsFieldMapping, $this>
+     */
+    public function fieldMappings(): HasMany
+    {
+        return $this->hasMany(MlsFieldMapping::class);
+    }
+
     public function isAuthorizedForProduction(): bool
     {
         return $this->is_enabled && $this->status === ProviderStatus::Authorized;

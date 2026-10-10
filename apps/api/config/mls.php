@@ -23,6 +23,16 @@ return [
 
     'fixture_path' => base_path('tests/Fixtures/mls'),
 
+    'sync' => [
+        // Upper bound of incremental batches per job run (the next run continues from the cursor).
+        'max_batches_per_run' => (int) env('MLS_MAX_BATCHES_PER_RUN', 25),
+        'import_chunk' => 100,
+        // Reconciliation refuses to hide more than this share of active listings at once
+        // (protects against a truncated/failed feed wiping the inventory).
+        'reconcile_max_removal_ratio' => (float) env('MLS_RECONCILE_MAX_REMOVAL_RATIO', 0.2),
+        'max_photos' => 50,
+    ],
+
     'http' => [
         'timeout' => (int) env('MLS_HTTP_TIMEOUT', 30),
         'retries' => 3,

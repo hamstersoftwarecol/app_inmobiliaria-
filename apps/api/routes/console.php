@@ -8,3 +8,11 @@ Schedule::command('hitlease:licenses:expire')
     ->timezone(config('hitlease.agency_timezone'))
     ->withoutOverlapping()
     ->onOneServer();
+
+// MLS: incremental syncs when due (per-provider refresh interval), nightly reconciliation.
+Schedule::command('hitlease:mls:sync-due')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command('hitlease:mls:sync-due --type=reconcile')
+    ->dailyAt('03:30')
+    ->timezone(config('hitlease.agency_timezone'))
+    ->withoutOverlapping()
+    ->onOneServer();

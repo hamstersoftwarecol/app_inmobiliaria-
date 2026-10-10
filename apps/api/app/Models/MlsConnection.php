@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -39,6 +40,14 @@ class MlsConnection extends Model
     public function provider(): BelongsTo
     {
         return $this->belongsTo(MlsProvider::class, 'mls_provider_id');
+    }
+
+    /**
+     * @return HasMany<MlsSyncJob, $this>
+     */
+    public function syncJobs(): HasMany
+    {
+        return $this->hasMany(MlsSyncJob::class);
     }
 
     public function isProduction(): bool

@@ -29,6 +29,14 @@ return [
         'self_registration_roles' => ['buyer', 'seller'],
     ],
 
+    'media' => [
+        // Filesystem disk for uploaded listing photos ("public" locally, an
+        // S3-compatible disk such as Cloudflare R2 in production).
+        'disk' => env('MEDIA_DISK', 'public'),
+        'max_photos' => 50,
+        'max_kilobytes' => 15360,
+    ],
+
     'mls' => [
         // Global kill switch. Production syncs stay off until licences and
         // official provider specifications are in place.

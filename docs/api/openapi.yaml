@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hitlease Real Estate API
-  version: 1.0.0-alpha.2
+  version: 1.0.0-alpha.3
   summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
   description: |
     Central API consumed by the Next.js web app and the Flutter mobile app.
@@ -44,7 +44,11 @@ tags:
   - name: Admin MLS
     description: MLS provider catalogue and encrypted connections (licence-gated).
   - name: Properties
-    description: Planned (Sprint 4).
+    description: Public listings (internal and MLS) with per-provider compliance applied.
+  - name: Listing Management
+    description: Staff and agent management of internal listings, publication and photos.
+  - name: Admin MLS Sync
+    description: MLS sync jobs, monitoring and field mappings.
   - name: Search
     description: Planned (Sprint 5).
   - name: Agents
@@ -1403,16 +1407,456 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
-  # ------------------------------------------------------------------ Planned
+  /property-types:
+    get:
+      tags: [Properties]
+      operationId: listPropertyTypes
+      summary: Property type catalogue
+      security: []
+      responses:
+        "200":
+          description: Types
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        code: { $ref: "#/components/schemas/PropertyTypeCode" }
+                        name_en: { type: string }
+                        name_es: { type: string }
+
   /properties:
     get:
       tags: [Properties]
       operationId: listProperties
-      summary: "[Planned] List properties"
-      x-status: planned
+      summary: Browse public listings
+      description: |
+        Basic browsing; geographic search arrives with the search module. Send `X-Hitlease-Client: mobile`
+        from the mobile app so MLS listings whose licence forbids mobile display are excluded.
       security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - { name: listing_type, in: query, schema: { type: string, enum: [sale, rent] } }
+        - { name: property_type, in: query, schema: { $ref: "#/components/schemas/PropertyTypeCode" } }
+        - { name: city, in: query, schema: { type: string } }
+        - { name: postal_code, in: query, schema: { type: string, pattern: "^\\d{5}$" } }
+        - { name: min_price, in: query, schema: { type: number, minimum: 0 } }
+        - { name: max_price, in: query, schema: { type: number, minimum: 0 } }
+        - { name: min_beds, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: sort, in: query, schema: { type: string, enum: [newest, price_asc, price_desc], default: newest } }
+        - $ref: "#/components/parameters/Page"
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 48 } }
       responses:
-        "200": { $ref: "#/components/responses/Planned" }
+        "200":
+          description: Paginated listing cards
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/PublicPropertySummary" } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /properties/{slug}:
+    get:
+      tags: [Properties]
+      operationId: getProperty
+      summary: Public listing detail
+      description: MLS listings include attribution, disclaimer and freshness, and only the fields and photos the provider allows.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - { name: slug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }
+      responses:
+        "200":
+          description: Listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PublicProperty" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /manage/properties:
+    get:
+      tags: [Listing Management]
+      operationId: manageListProperties
+      summary: Listings visible to the user (agents only their own)
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: source, in: query, schema: { type: string, enum: [internal, mls] } }
+        - { name: published, in: query, schema: { type: boolean } }
+        - { name: status, in: query, schema: { type: string } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated listings
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/ManagedProperty" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Listing Management]
+      operationId: manageCreateProperty
+      summary: Create an internal listing (unpublished; agents list under their own profile)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PropertyInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /manage/properties/{property}:
+    parameters:
+      - { name: property, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Listing Management]
+      operationId: manageGetProperty
+      summary: Listing with media, MLS info and status/price history
+      responses:
+        "200":
+          description: Listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Listing Management]
+      operationId: manageUpdateProperty
+      summary: Update an internal listing (MLS listings are read-only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PropertyInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Listing Management]
+      operationId: manageDeleteProperty
+      summary: Soft-delete an internal listing (`properties.delete`)
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /manage/properties/{property}/publish:
+    post:
+      tags: [Listing Management]
+      operationId: managePublishProperty
+      summary: Publish (`properties.publish`); fails with `listing_not_publishable` when required fields are missing
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /manage/properties/{property}/unpublish:
+    post:
+      tags: [Listing Management]
+      operationId: manageUnpublishProperty
+      summary: Take a listing off the public site (`properties.publish`)
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Unpublished
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /manage/properties/{property}/media:
+    post:
+      tags: [Listing Management]
+      operationId: manageUploadPhoto
+      summary: Upload a photo (JPEG/PNG/WebP, ≥640×480, ≤15 MB); re-encoded to strip EXIF/GPS metadata
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo: { type: string, format: binary }
+                caption: { type: string, maxLength: 300 }
+      responses:
+        "201":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PropertyMedia" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /manage/properties/{property}/media/order:
+    put:
+      tags: [Listing Management]
+      operationId: manageReorderPhotos
+      summary: Reorder photos
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order]
+              properties:
+                order: { type: array, items: { type: integer } }
+      responses:
+        "200":
+          description: Photos in the new order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/PropertyMedia" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /manage/properties/{property}/media/{media}:
+    delete:
+      tags: [Listing Management]
+      operationId: manageDeletePhoto
+      summary: Delete an uploaded photo
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+        - { name: media, in: path, required: true, schema: { type: integer } }
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/mls/sync:
+    post:
+      tags: [Admin MLS Sync]
+      operationId: adminTriggerMlsSync
+      summary: Queue a sync (`mls.sync`); returns the pending job if one is already queued/running
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [connection_id, type]
+              properties:
+                connection_id: { type: integer }
+                type: { type: string, enum: [import, incremental, reconcile] }
+      responses:
+        "202":
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/MlsSyncJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/mls/sync-jobs:
+    get:
+      tags: [Admin MLS Sync]
+      operationId: adminListMlsSyncJobs
+      summary: Sync job history (`mls.view`)
+      parameters:
+        - { name: connection_id, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string, enum: [queued, running, succeeded, partial, failed] } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/MlsSyncJob" } }
+                  meta: { type: object }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/mls/sync-jobs/{job}:
+    get:
+      tags: [Admin MLS Sync]
+      operationId: adminGetMlsSyncJob
+      summary: Sync job with its latest 200 log lines
+      parameters:
+        - { name: job, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/MlsSyncJob"
+                      - type: object
+                        properties:
+                          logs:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                level: { type: string, enum: [info, warning, error] }
+                                message: { type: string }
+                                listing_key: { type: [string, "null"] }
+                                created_at: { type: string, format: date-time }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/mls/status:
+    get:
+      tags: [Admin MLS Sync]
+      operationId: adminMlsStatus
+      summary: Monitoring panel data (per-connection health, staleness, counts, duplicate candidates)
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sync_enabled: { type: boolean }
+                      connections:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            connection_id: { type: integer }
+                            name: { type: string }
+                            environment: { type: string }
+                            status: { type: string }
+                            last_error: { type: [string, "null"] }
+                            last_synced_at: { type: [string, "null"], format: date-time }
+                            is_stale: { type: boolean }
+                            listings:
+                              type: object
+                              properties:
+                                total: { type: integer }
+                                removed: { type: integer }
+                                published: { type: integer }
+                            last_job: { oneOf: [{ $ref: "#/components/schemas/MlsSyncJob" }, { type: "null" }] }
+                      duplicate_candidates:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            address_key: { type: string }
+                            property_ids: { type: string }
+                            providers: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/mls/providers/{provider}/field-mappings:
+    parameters:
+      - { name: provider, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Admin MLS Sync]
+      operationId: adminGetMlsFieldMappings
+      summary: Provider field-name overrides of the RESO Data Dictionary
+      responses:
+        "200":
+          description: Mappings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/FieldMapping" } }
+    put:
+      tags: [Admin MLS Sync]
+      operationId: adminReplaceMlsFieldMappings
+      summary: Replace all mappings (`mls.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mappings]
+              properties:
+                mappings: { type: array, items: { $ref: "#/components/schemas/FieldMapping" } }
+      responses:
+        "200":
+          description: Updated mappings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/FieldMapping" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  # ------------------------------------------------------------------ Planned
   /search/properties:
     get:
       tags: [Search]
@@ -1460,6 +1904,11 @@ components:
       description: Sanctum personal access token (mobile).
 
   parameters:
+    ClientChannel:
+      name: X-Hitlease-Client
+      in: header
+      description: Set to `mobile` from the mobile app (MLS mobile-display rules).
+      schema: { type: string, enum: [web, mobile] }
     Page:
       name: page
       in: query
@@ -1980,3 +2429,181 @@ components:
             id: { type: integer }
             slug: { type: string }
             agents_count: { type: integer }
+
+    PropertyTypeCode:
+      type: string
+      enum: [single_family, condominium, townhouse, multi_family, apartment, land, commercial, rental]
+
+    PropertyInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 5, maxLength: 200, description: Required on create }
+        listing_type: { type: string, enum: [sale, rent], description: Required on create }
+        description: { type: [string, "null"] }
+        description_es: { type: [string, "null"] }
+        property_type_id: { type: [integer, "null"] }
+        property_subtype: { type: [string, "null"] }
+        status: { type: string, enum: [active, coming_soon, active_under_contract, pending, closed, withdrawn, expired, canceled] }
+        list_price: { type: [number, "null"], minimum: 0 }
+        listing_agent_id: { type: [integer, "null"], description: Ignored/validated for agents (always their own profile) }
+        street_address: { type: [string, "null"] }
+        unit: { type: [string, "null"] }
+        city: { type: [string, "null"] }
+        county: { type: [string, "null"] }
+        state: { type: string, default: NJ }
+        postal_code: { type: [string, "null"] }
+        address_display: { type: boolean }
+        latitude: { type: [number, "null"] }
+        longitude: { type: [number, "null"] }
+        bedrooms: { type: [integer, "null"] }
+        bathrooms: { type: [number, "null"], multipleOf: 0.5 }
+        living_area_sqft: { type: [integer, "null"] }
+        lot_size_sqft: { type: [number, "null"] }
+        year_built: { type: [integer, "null"] }
+        parking_spaces: { type: [integer, "null"] }
+        garage_spaces: { type: [integer, "null"] }
+        heating: { type: array, items: { type: string } }
+        cooling: { type: array, items: { type: string } }
+        amenities: { type: array, items: { type: string, enum: [pool, garage, basement, fireplace, central_air, laundry_in_unit, elevator, doorman, gym, balcony, patio, deck, waterfront, pets_allowed, ev_charging, solar, accessible] } }
+        hoa_fee_monthly: { type: [number, "null"] }
+        annual_taxes: { type: [number, "null"] }
+
+    PropertyMedia:
+      type: object
+      properties:
+        id: { type: integer }
+        source: { type: string, enum: [upload, mls] }
+        url: { type: [string, "null"] }
+        mime_type: { type: [string, "null"] }
+        width: { type: [integer, "null"] }
+        height: { type: [integer, "null"] }
+        caption: { type: [string, "null"] }
+        sort_order: { type: integer }
+        display_allowed: { type: boolean }
+
+    ManagedProperty:
+      allOf:
+        - $ref: "#/components/schemas/PropertyInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            source: { type: string, enum: [internal, mls] }
+            is_published: { type: boolean }
+            published_at: { type: [string, "null"], format: date-time }
+            publication_missing: { type: array, items: { type: string }, description: Fields still required before publishing }
+            property_type: { type: [object, "null"] }
+            listing_agent: { type: [object, "null"] }
+            mls:
+              type: [object, "null"]
+              properties:
+                provider: { type: string }
+                listing_id: { type: [string, "null"] }
+                listing_key: { type: string }
+                listing_broker: { type: [string, "null"] }
+                last_synced_at: { type: [string, "null"], format: date-time }
+                removed_at: { type: [string, "null"], format: date-time }
+            media: { type: array, items: { $ref: "#/components/schemas/PropertyMedia" } }
+            status_history:
+              type: array
+              items:
+                type: object
+                properties:
+                  from_status: { type: [string, "null"] }
+                  to_status: { type: string }
+                  from_price: { type: [number, "null"] }
+                  to_price: { type: [number, "null"] }
+                  source: { type: string }
+                  changed_at: { type: string, format: date-time }
+
+    PublicPropertySummary:
+      type: object
+      properties:
+        slug: { type: string }
+        source: { type: string, enum: [internal, mls] }
+        status: { type: string }
+        listing_type: { type: string, enum: [sale, rent] }
+        property_type: { type: [object, "null"], properties: { code: { type: string }, name: { type: string } } }
+        title: { type: string }
+        list_price: { type: [number, "null"] }
+        currency: { type: string }
+        address:
+          type: object
+          properties:
+            street_address: { type: [string, "null"], description: Null when the listing hides its address }
+            unit: { type: [string, "null"] }
+            city: { type: [string, "null"] }
+            county: { type: [string, "null"] }
+            state: { type: string }
+            postal_code: { type: [string, "null"] }
+            displayed: { type: boolean }
+        location: { type: [object, "null"], properties: { latitude: { type: number }, longitude: { type: number } } }
+        bedrooms: { type: [integer, "null"] }
+        bathrooms: { type: [number, "null"] }
+        living_area_sqft: { type: [integer, "null"] }
+        cover_photo: { type: [string, "null"] }
+        compliance:
+          type: [object, "null"]
+          description: Present for MLS listings
+          properties:
+            source_mls: { type: string }
+            listing_id: { type: [string, "null"] }
+            attribution: { type: [string, "null"] }
+            disclaimer: { type: [string, "null"] }
+            last_updated_at: { type: [string, "null"], format: date-time }
+
+    PublicProperty:
+      allOf:
+        - $ref: "#/components/schemas/PublicPropertySummary"
+        - type: object
+          properties:
+            details:
+              type: object
+              description: Fields an MLS licence does not allow are null.
+            photos:
+              type: array
+              items:
+                type: object
+                properties:
+                  url: { type: string }
+                  caption: { type: [string, "null"] }
+                  width: { type: [integer, "null"] }
+                  height: { type: [integer, "null"] }
+            listing_agent: { type: [object, "null"] }
+            brokerage: { type: [object, "null"] }
+            published_at: { type: [string, "null"], format: date-time }
+
+    MlsSyncJob:
+      type: object
+      properties:
+        id: { type: integer }
+        connection_id: { type: integer }
+        provider: { type: [string, "null"] }
+        type: { type: string, enum: [import, incremental, reconcile] }
+        status: { type: string, enum: [queued, running, succeeded, partial, failed] }
+        stats:
+          type: [object, "null"]
+          properties:
+            fetched: { type: integer }
+            created: { type: integer }
+            updated: { type: integer }
+            unchanged: { type: integer }
+            published: { type: integer }
+            hidden: { type: integer }
+            removed: { type: integer }
+            errors: { type: integer }
+            media: { type: integer }
+        error: { type: [string, "null"] }
+        cursor_before: { type: [string, "null"] }
+        cursor_after: { type: [string, "null"] }
+        triggered_by: { type: [integer, "null"] }
+        started_at: { type: [string, "null"], format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    FieldMapping:
+      type: object
+      required: [internal_field, provider_field]
+      properties:
+        internal_field: { type: string, pattern: "^[a-z_]+$", examples: [list_price] }
+        provider_field: { type: string, examples: [ListPrice] }

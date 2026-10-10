@@ -187,14 +187,20 @@ class RESOWebAPIProvider implements MLSProviderInterface
         }
     }
 
+    /** @var array<string, string>|null */
+    private ?array $fieldMapCache = null;
+
     /**
-     * Provider-specific overrides of the RESO Data Dictionary field names.
+     * Provider-specific overrides of the RESO Data Dictionary field names,
+     * maintained by super admins in `mls_field_mappings`.
      *
      * @return array<string, string>
      */
     protected function fieldMap(): array
     {
-        return [];
+        return $this->fieldMapCache ??= $this->connection->provider
+            ? $this->connection->provider->fieldMappings()->pluck('provider_field', 'internal_field')->all()
+            : [];
     }
 
     protected function accessToken(bool $forceRefresh = false): string

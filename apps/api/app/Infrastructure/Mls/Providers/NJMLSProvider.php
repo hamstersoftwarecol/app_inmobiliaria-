@@ -11,7 +11,7 @@ namespace App\Infrastructure\Mls\Providers;
  * Web API Core behaviour of its parent and MUST NOT be enabled in production
  * (MLSConnectionManager enforces this). Once the specification is received:
  *  - confirm protocol/authentication (replace the parent if it is not RESO Web API),
- *  - fill fieldMap() with provider-specific field names,
+ *  - record provider-specific field names in mls_field_mappings (admin API),
  *  - set SPECIFICATION_VERIFIED = true after contract tests pass.
  *
  * See docs/mls/integration-plan.md.
@@ -21,9 +21,4 @@ class NJMLSProvider extends RESOWebAPIProvider
     protected const CODE = 'njmls';
 
     protected const SPECIFICATION_VERIFIED = false;
-
-    protected function fieldMap(): array
-    {
-        return [];
-    }
 }

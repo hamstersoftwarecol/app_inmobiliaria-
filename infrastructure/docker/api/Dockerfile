@@ -8,9 +8,11 @@ RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader --pr
 
 FROM php:8.3-fpm-alpine AS runtime
 
-RUN apk add --no-cache icu-libs libpq libzip fcgi \
+RUN apk add --no-cache icu-libs libpq libzip fcgi libpng libjpeg-turbo libwebp freetype \
  && apk add --no-cache --virtual .build-deps $PHPIZE_DEPS icu-dev libpq-dev libzip-dev linux-headers \
- && docker-php-ext-install -j"$(nproc)" intl pdo_pgsql pgsql zip opcache pcntl bcmath \
+      libpng-dev libjpeg-turbo-dev libwebp-dev freetype-dev \
+ && docker-php-ext-configure gd --with-jpeg --with-webp --with-freetype \
+ && docker-php-ext-install -j"$(nproc)" intl pdo_pgsql pgsql zip opcache pcntl bcmath gd \
  && pecl install redis \
  && docker-php-ext-enable redis \
  && apk del .build-deps \

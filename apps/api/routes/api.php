@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\Admin\AgentController;
 use App\Http\Controllers\Api\V1\Admin\AuditLogController;
 use App\Http\Controllers\Api\V1\Admin\LicenseController;
 use App\Http\Controllers\Api\V1\Admin\MlsProviderController;
+use App\Http\Controllers\Api\V1\Admin\MlsSyncController;
 use App\Http\Controllers\Api\V1\Admin\OfficeController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
@@ -14,8 +15,10 @@ use App\Http\Controllers\Api\V1\Auth\MfaController;
 use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\ProfileController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
+use App\Http\Controllers\Api\V1\Manage\PropertyController as ManagePropertyController;
 use App\Http\Controllers\Api\V1\Me\AgentProfileController;
 use App\Http\Controllers\Api\V1\Public\AgentDirectoryController;
+use App\Http\Controllers\Api\V1\Public\PropertyController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -29,6 +32,26 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     Route::get('/agents', [AgentDirectoryController::class, 'index'])->name('agents.index');
     Route::get('/agents/{slug}', [AgentDirectoryController::class, 'show'])
         ->where('slug', '[a-z0-9-]+')->name('agents.show');
+
+    Route::get('/property-types', [PropertyController::class, 'types'])->name('property-types.index');
+    Route::get('/properties', [PropertyController::class, 'index'])->name('properties.index');
+    Route::get('/properties/{slug}', [PropertyController::class, 'show'])
+        ->where('slug', '[a-z0-9-]+')->name('properties.show');
+
+    // ---------------------------------------------------------------- Listing management (staff & agents)
+    Route::prefix('manage')->name('manage.')->middleware(['auth:sanctum', 'active'])->group(function () {
+        Route::get('/properties', [ManagePropertyController::class, 'index'])->name('properties.index');
+        Route::post('/properties', [ManagePropertyController::class, 'store'])->name('properties.store');
+        Route::get('/properties/{property}', [ManagePropertyController::class, 'show'])->whereNumber('property')->name('properties.show');
+        Route::patch('/properties/{property}', [ManagePropertyController::class, 'update'])->whereNumber('property')->name('properties.update');
+        Route::delete('/properties/{property}', [ManagePropertyController::class, 'destroy'])->whereNumber('property')->name('properties.destroy');
+        Route::post('/properties/{property}/publish', [ManagePropertyController::class, 'publish'])->whereNumber('property')->name('properties.publish');
+        Route::post('/properties/{property}/unpublish', [ManagePropertyController::class, 'unpublish'])->whereNumber('property')->name('properties.unpublish');
+        Route::post('/properties/{property}/media', [ManagePropertyController::class, 'storeMedia'])->whereNumber('property')
+            ->middleware('throttle:30,1')->name('properties.media.store');
+        Route::put('/properties/{property}/media/order', [ManagePropertyController::class, 'reorderMedia'])->whereNumber('property')->name('properties.media.order');
+        Route::delete('/properties/{property}/media/{media}', [ManagePropertyController::class, 'destroyMedia'])->whereNumber(['property', 'media'])->name('properties.media.destroy');
+    });
 
     // ---------------------------------------------------------------- Self-service
     Route::prefix('me')->name('me.')->middleware(['auth:sanctum', 'active'])->group(function () {
@@ -122,6 +145,13 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
             Route::patch('/providers/{provider}', [MlsProviderController::class, 'update'])->can('mls.manage')->name('providers.update');
             Route::post('/providers/{provider}/connections', [MlsProviderController::class, 'storeConnection'])->can('mls.manage')->name('connections.store');
             Route::post('/connections/{connection}/test', [MlsProviderController::class, 'testConnection'])->can('mls.manage')->name('connections.test');
+
+            Route::post('/sync', [MlsSyncController::class, 'sync'])->can('mls.sync')->name('sync');
+            Route::get('/sync-jobs', [MlsSyncController::class, 'jobs'])->can('mls.view')->name('sync-jobs.index');
+            Route::get('/sync-jobs/{job}', [MlsSyncController::class, 'job'])->can('mls.view')->name('sync-jobs.show');
+            Route::get('/status', [MlsSyncController::class, 'status'])->can('mls.view')->name('status');
+            Route::get('/providers/{provider}/field-mappings', [MlsSyncController::class, 'fieldMappings'])->can('mls.view')->name('field-mappings.index');
+            Route::put('/providers/{provider}/field-mappings', [MlsSyncController::class, 'updateFieldMappings'])->can('mls.manage')->name('field-mappings.update');
         });
     });
 });

@@ -4,7 +4,7 @@ namespace Tests;
 
 use App\Domain\Identity\Enums\RoleName;
 use App\Models\User;
-use Database\Seeders\RolesAndPermissionsSeeder;
+use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
 use Illuminate\Support\Facades\Http;
@@ -17,7 +17,7 @@ abstract class TestCase extends BaseTestCase
 
     protected bool $seed = true;
 
-    protected string $seeder = RolesAndPermissionsSeeder::class;
+    protected string $seeder = DatabaseSeeder::class;
 
     public const WEB_ORIGIN = 'http://localhost:3000';
 
