@@ -14,7 +14,10 @@ export function HeroSearch() {
   const [query, setQuery] = useState("");
 
   return (
-    <form method="post"
+    // Without JavaScript the browser submits ?location=… to the results page, which parses it.
+    <form
+      method="get"
+      action="/properties"
       role="search"
       className="mt-8 flex w-full max-w-2xl flex-col gap-2 rounded-lg bg-white p-2 shadow-lg sm:flex-row"
       onSubmit={(e) => {
@@ -27,6 +30,7 @@ export function HeroSearch() {
       </label>
       <Input
         id="hero-search"
+        name="location"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t("home.searchPlaceholder")}
