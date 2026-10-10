@@ -19,3 +19,6 @@ linter:
     - prefer_single_quotes
     - require_trailing_commas
     - unawaited_futures
+
+formatter:
+  page_width: 120
