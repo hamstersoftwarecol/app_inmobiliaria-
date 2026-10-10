@@ -37,3 +37,13 @@ Schedule::command('hitlease:crm:task-reminders')->everyFiveMinutes()->withoutOve
 Schedule::command('hitlease:showings:reminders')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
 Schedule::call(fn () => DB::table('idempotency_keys')->where('expires_at', '<', now())->delete())
     ->name('idempotency-keys:prune')->hourly()->onOneServer();
+
+// Deals: offers past their response deadline; milestone reminders each agency morning.
+Schedule::command('hitlease:offers:expire')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::command('hitlease:transactions:milestone-reminders')
+    ->dailyAt('07:40')
+    ->timezone(config('hitlease.agency_timezone'))
+    ->withoutOverlapping()
+    ->onOneServer();
+// Document retention purge is NOT scheduled: run `hitlease:documents:purge` (dry run) and add
+// --force only after counsel confirms the retention period.

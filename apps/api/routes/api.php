@@ -19,11 +19,15 @@ use App\Http\Controllers\Api\V1\Crm\LeadActivityController;
 use App\Http\Controllers\Api\V1\Crm\LeadController;
 use App\Http\Controllers\Api\V1\Crm\ReportController;
 use App\Http\Controllers\Api\V1\Crm\TaskController;
+use App\Http\Controllers\Api\V1\Deals\DocumentController;
+use App\Http\Controllers\Api\V1\Deals\OfferController;
+use App\Http\Controllers\Api\V1\Deals\TransactionController;
 use App\Http\Controllers\Api\V1\Manage\PropertyController as ManagePropertyController;
 use App\Http\Controllers\Api\V1\Me\AgentProfileController;
 use App\Http\Controllers\Api\V1\Me\FavoriteController;
 use App\Http\Controllers\Api\V1\Me\NotificationController;
 use App\Http\Controllers\Api\V1\Me\SavedSearchController;
+use App\Http\Controllers\Api\V1\Messaging\ConversationController;
 use App\Http\Controllers\Api\V1\Public\AgentDirectoryController;
 use App\Http\Controllers\Api\V1\Public\InquiryController;
 use App\Http\Controllers\Api\V1\Public\PropertyController;
@@ -90,6 +94,49 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->whereNumber('task')->name('tasks.destroy');
 
         Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
+    });
+
+    // ---------------------------------------------------------------- Offers & transactions (staff need MFA)
+    Route::middleware(['auth:sanctum', 'active', 'mfa.staff'])->group(function () {
+        Route::get('/offers', [OfferController::class, 'index'])->name('offers.index');
+        Route::post('/offers', [OfferController::class, 'store'])->middleware('idempotent')->name('offers.store');
+        Route::get('/offers/{offer}', [OfferController::class, 'show'])->whereNumber('offer')->name('offers.show');
+        Route::patch('/offers/{offer}', [OfferController::class, 'update'])->whereNumber('offer')->name('offers.update');
+        foreach (['submit', 'counter', 'accept', 'reject', 'withdraw'] as $action) {
+            Route::post("/offers/{offer}/{$action}", [OfferController::class, $action])->whereNumber('offer')->middleware('idempotent')->name("offers.{$action}");
+        }
+
+        Route::get('/transactions', [TransactionController::class, 'index'])->name('transactions.index');
+        Route::get('/transactions/{transaction}', [TransactionController::class, 'show'])->whereNumber('transaction')->name('transactions.show');
+        Route::patch('/transactions/{transaction}', [TransactionController::class, 'update'])->whereNumber('transaction')->name('transactions.update');
+        Route::post('/transactions/{transaction}/close', [TransactionController::class, 'close'])->whereNumber('transaction')->name('transactions.close');
+        Route::post('/transactions/{transaction}/cancel', [TransactionController::class, 'cancel'])->whereNumber('transaction')->name('transactions.cancel');
+        Route::post('/transactions/{transaction}/milestones', [TransactionController::class, 'storeMilestone'])->whereNumber('transaction')->name('transactions.milestones.store');
+        Route::patch('/transactions/{transaction}/milestones/{milestone}', [TransactionController::class, 'updateMilestone'])->whereNumber(['transaction', 'milestone'])->name('transactions.milestones.update');
+        Route::delete('/transactions/{transaction}/milestones/{milestone}', [TransactionController::class, 'destroyMilestone'])->whereNumber(['transaction', 'milestone'])->name('transactions.milestones.destroy');
+        Route::post('/transactions/{transaction}/participants', [TransactionController::class, 'storeParticipant'])->whereNumber('transaction')->name('transactions.participants.store');
+        Route::delete('/transactions/{transaction}/participants/{participant}', [TransactionController::class, 'destroyParticipant'])->whereNumber(['transaction', 'participant'])->name('transactions.participants.destroy');
+
+        Route::get('/transactions/{transaction}/documents', [DocumentController::class, 'index'])->whereNumber('transaction')->name('transactions.documents.index');
+        Route::post('/transactions/{transaction}/documents', [DocumentController::class, 'store'])->whereNumber('transaction')->middleware('throttle:30,1')->name('transactions.documents.store');
+        Route::patch('/documents/{document}', [DocumentController::class, 'update'])->whereNumber('document')->name('documents.update');
+        Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->whereNumber('document')->name('documents.destroy');
+        Route::post('/documents/{document}/versions', [DocumentController::class, 'storeVersion'])->whereNumber('document')->middleware('throttle:30,1')->name('documents.versions.store');
+        Route::post('/documents/{document}/versions/{version}/link', [DocumentController::class, 'link'])->whereNumber(['document', 'version'])->middleware('throttle:60,1')->name('documents.versions.link');
+    });
+
+    // Short-lived signed link issued by documents.versions.link; the signature is the credential.
+    Route::get('/documents/download/{version}', [DocumentController::class, 'download'])->whereNumber('version')
+        ->middleware(['signed', 'throttle:60,1'])->name('documents.download');
+
+    // ---------------------------------------------------------------- Messaging
+    Route::prefix('conversations')->name('conversations.')->middleware(['auth:sanctum', 'active', 'can:messages.use'])->group(function () {
+        Route::get('/', [ConversationController::class, 'index'])->name('index');
+        Route::post('/', [ConversationController::class, 'store'])->middleware('throttle:20,1')->name('store');
+        Route::get('/unread-count', [ConversationController::class, 'unreadCount'])->name('unread-count');
+        Route::get('/contacts', [ConversationController::class, 'contacts'])->name('contacts');
+        Route::get('/{conversation}', [ConversationController::class, 'show'])->whereNumber('conversation')->name('show');
+        Route::post('/{conversation}/messages', [ConversationController::class, 'storeMessage'])->whereNumber('conversation')->middleware('throttle:60,1')->name('messages.store');
     });
 
     // ---------------------------------------------------------------- Listing management (staff & agents)

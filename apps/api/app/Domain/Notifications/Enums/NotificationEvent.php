@@ -15,6 +15,9 @@ enum NotificationEvent: string
     case TaskReminders = 'task_reminders';
     case SavedSearchAlerts = 'saved_search_alerts';
     case LicenceUpdates = 'licence_updates';
+    case OfferUpdates = 'offer_updates';
+    case TransactionUpdates = 'transaction_updates';
+    case Messages = 'messages';
     case Marketing = 'marketing';
 
     /** Marketing needs explicit opt-in; everything else is on until turned off. */

@@ -2,8 +2,11 @@
 
 namespace App\Providers;
 
+use App\Domain\Documents\Contracts\DocumentScanner;
 use App\Domain\Identity\Enums\Permission;
 use App\Domain\Mls\Contracts\MLSConnectionResolver;
+use App\Infrastructure\Documents\ClamdScanner;
+use App\Infrastructure\Documents\NullScanner;
 use App\Infrastructure\Mls\MLSConnectionManager;
 use App\Models\User;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -18,6 +21,15 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(MLSConnectionResolver::class, MLSConnectionManager::class);
+
+        $this->app->bind(DocumentScanner::class, fn () => match (config('hitlease.documents.scanner')) {
+            'clamd' => new ClamdScanner(
+                (string) config('hitlease.documents.clamd_host'),
+                (int) config('hitlease.documents.clamd_port'),
+                (int) config('hitlease.documents.clamd_timeout'),
+            ),
+            default => new NullScanner,
+        });
     }
 
     public function boot(): void

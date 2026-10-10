@@ -39,6 +39,20 @@ return [
         'max_days_ahead' => (int) env('SHOWING_MAX_DAYS_AHEAD', 30),
     ],
 
+    'documents' => [
+        // Private disk (never web-served). Cloudflare R2 replaces it once the bucket exists.
+        'disk' => env('DOCUMENTS_DISK', 'local'),
+        'max_kilobytes' => (int) env('DOCUMENTS_MAX_KB', 25600),
+        'link_minutes' => (int) env('DOCUMENTS_LINK_MINUTES', 5),
+        // Years kept after closing/cancellation (confirm the period with counsel).
+        'retention_years' => (int) env('DOCUMENTS_RETENTION_YEARS', 6),
+        // none | clamd. With clamd, files are downloadable only after a clean scan.
+        'scanner' => env('DOCUMENT_SCANNER', 'none'),
+        'clamd_host' => env('CLAMD_HOST', '127.0.0.1'),
+        'clamd_port' => (int) env('CLAMD_PORT', 3310),
+        'clamd_timeout' => (int) env('CLAMD_TIMEOUT', 30),
+    ],
+
     'media' => [
         // Filesystem disk for uploaded listing photos ("public" locally, an
         // S3-compatible disk such as Cloudflare R2 in production).
