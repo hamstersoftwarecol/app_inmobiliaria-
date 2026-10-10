@@ -42,8 +42,9 @@ export function LoginForm() {
 
   const onAuthenticated = (user: User) => {
     // Nothing cached for a previous account (unread counts, lists…) may leak into this session.
-    queryClient.clear();
+    // Reset (not clear): mounted components such as the header stay subscribed and refetch.
     queryClient.setQueryData(authKeys.me, user);
+    void queryClient.resetQueries({ predicate: (q) => JSON.stringify(q.queryKey) !== JSON.stringify(authKeys.me) });
     router.push(safeRedirect(searchParams.get("next")));
   };
 

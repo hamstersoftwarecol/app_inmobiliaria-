@@ -9,7 +9,7 @@ dependency (not counted as done).
 | ID | Item | Pri | Status | Evidence |
 |---|---|---|---|---|
 | ARC-1 | Architecture, components, ERD, OpenAPI 3.1, MLS plan, security plan, backlog | P0 | ✅ | `docs/` |
-| ARC-2 | Monorepo: Laravel 13 API, Next.js 15 web, Flutter 3.47 app | P0 | ✅ | `apps/*` |
+| ARC-2 | Monorepo: Laravel 13 API, Next.js 16 web, Flutter 3.47 app | P0 | ✅ | `apps/*` |
 | ARC-3 | PostgreSQL 16 + PostGIS 3, Redis | P0 | ✅ | migrations, `docker-compose.yml` |
 | ARC-4 | Docker images + Compose (API, queue, scheduler, web, nginx, Postgres, Redis) | P0 | 🟡 | Web image built & run locally; API image build not verifiable in the dev sandbox (Alpine package mirror blocked) — verified by CI `docker` job |
 | ARC-5 | CI: lint, static checks, tests, migrations up/down, audits, E2E, Flutter, OpenAPI lint, Docker builds | P0 | ✅ | `.github/workflows/ci.yml` (first run happens on push) |

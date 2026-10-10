@@ -80,9 +80,14 @@ export function PropertyForm({ property, onSaved }: Props) {
     return message ? (t(`validation.${message}`) === `validation.${message}` ? message : t(`validation.${message}`)) : undefined;
   };
 
+  // Re-sync when another listing is loaded (state adjusted during render, not in an effect).
+  const [loaded, setLoaded] = useState(property);
+  if (loaded !== property) {
+    setLoaded(property);
+    setAgentId(str(property?.listing_agent?.id));
+  }
   useEffect(() => {
     form.reset(propertyDefaults(property));
-    setAgentId(str(property?.listing_agent?.id));
   }, [property, form]);
 
   const submit = form.handleSubmit(async (values) => {

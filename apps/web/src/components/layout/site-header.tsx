@@ -19,12 +19,12 @@ export function SiteHeader() {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2 font-bold text-brand-700">
-          <Building2 aria-hidden="true" className="size-6 text-accent-600" />
-          <span>{t("brand")}</span>
+        <Link href="/" className="flex min-w-0 items-center gap-2 font-bold text-brand-700">
+          <Building2 aria-hidden="true" className="size-6 shrink-0 text-accent-600" />
+          <span className="truncate">{t("brand")}</span>
         </Link>
 
-        <nav aria-label={t("nav.mainNavigation")} className="flex items-center gap-1 sm:gap-2">
+        <nav aria-label={t("nav.mainNavigation")} className="flex shrink-0 items-center gap-1 sm:gap-2">
           <Link href="/properties" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden sm:inline-flex")}>
             {t("nav.properties")}
           </Link>

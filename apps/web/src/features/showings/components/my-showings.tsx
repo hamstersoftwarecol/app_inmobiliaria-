@@ -129,7 +129,7 @@ function ShowingCard({ appointment }: { appointment: Appointment }) {
           </p>
           {a.property && (
             <p className="text-sm">
-              <Link href={`/properties/${a.property.slug}`} className="text-brand-600 hover:underline">{a.property.title}</Link>
+              <Link href={`/properties/${a.property.slug}`} className="text-brand-600 underline underline-offset-2">{a.property.title}</Link>
               {a.property.street_address ? ` · ${a.property.street_address}, ${a.property.city}` : a.property.city ? ` · ${a.property.city}` : ""}
             </p>
           )}

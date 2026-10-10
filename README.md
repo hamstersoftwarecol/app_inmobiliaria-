@@ -7,7 +7,7 @@ aplicaciones Android/iOS y una API REST central.
 | Aplicación | Tecnología | Ruta |
 |---|---|---|
 | API REST | Laravel 13 · PHP 8.3 · Sanctum · PostgreSQL 16 + PostGIS · Redis | [`apps/api`](apps/api) |
-| Web | Next.js 15 · TypeScript · Tailwind 4 · shadcn/ui · TanStack Query · Zustand · RHF + Zod | [`apps/web`](apps/web) |
+| Web | Next.js 16 · TypeScript · Tailwind 4 · shadcn/ui · TanStack Query · Zustand · RHF + Zod | [`apps/web`](apps/web) |
 | Móvil | Flutter 3.47 · Riverpod · GoRouter · Dio · Freezed · almacenamiento seguro | [`apps/mobile`](apps/mobile) |
 
 ## Estado: versión candidata 1.0.0-rc.1 (Sprints 1–12)

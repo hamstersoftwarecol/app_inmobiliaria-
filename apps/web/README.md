@@ -1,6 +1,6 @@
 # App Inmobiliaria Real Estate — Web (Next.js)
 
-Next.js 15 (App Router) + TypeScript + Tailwind CSS 4 + shadcn/ui-style components,
+Next.js 16 (App Router) + TypeScript + Tailwind CSS 4 + shadcn/ui-style components,
 TanStack Query, Zustand, React Hook Form + Zod. English (default) and Spanish.
 
 All business data comes from the Laravel API (`NEXT_PUBLIC_API_URL`). Authentication

@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +35,12 @@ function WeeklyHours({ data }: { data: Availability }) {
   const [windows, setWindows] = useState<AvailabilityWindow[]>(data.windows);
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const [pending, setPending] = useState(false);
-  useEffect(() => setWindows(data.windows), [data.windows]);
+  // Re-sync after a save or refetch (state adjusted during render, not in an effect).
+  const [synced, setSynced] = useState(data.windows);
+  if (synced !== data.windows) {
+    setSynced(data.windows);
+    setWindows(data.windows);
+  }
   const invalid = windowErrors(windows);
 
   const update = (index: number, patch: Partial<AvailabilityWindow>) => setWindows((w) => w.map((x, i) => (i === index ? { ...x, ...patch } : x)));
