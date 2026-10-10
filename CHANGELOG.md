@@ -9,6 +9,11 @@ All notable changes. Versions follow the API contract (`docs/api/openapi.yaml`).
   password, two-factor setup and recovery codes, signed-in devices, e-mail preferences, account
   closure) and agent tools (availability and time off, new lead, own agent profile and licence
   submission). No API changes.
+* **Web:** Next.js 16, React 19.3, TypeScript 6 and current tooling; serves the mobile app-link
+  verification files when configured.
+* **Mobile:** e-mail and website links open in the app (password reset, e-mail verification,
+  unsubscribe, listings, dashboard pages), resend verification e-mail, release signing and a
+  manual signed-bundle workflow, placeholder icon and splash.
 
 ## 1.0.0-rc.1 — 2026-10-10
 

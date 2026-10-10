@@ -94,6 +94,9 @@ the `api-media` volume (`MEDIA_DISK=public`) and nginx serves them read-only und
 * Set the same random `API_SSR_KEY` (`openssl rand -hex 32`) on the API and the web server so
   server-rendered pages are rate-limited per visitor instead of per web server. Without it, all SSR
   traffic shares the web server's limit.
+* Mobile app links: once the apps are signed, set `ANDROID_APP_CERT_SHA256` (Play app-signing
+  certificate SHA-256) and `APPLE_TEAM_ID` on the web server so it serves
+  `/.well-known/assetlinks.json` and `/.well-known/apple-app-site-association`.
 * Queue workers must consume `default,notifications,mls-sync,mls-media,documents`.
 * Media: `MEDIA_DISK=public` needs `php artisan storage:link` and persistent, shared storage for
   every API/queue replica. **Cloudflare R2 is the intended production disk and is blocked** until

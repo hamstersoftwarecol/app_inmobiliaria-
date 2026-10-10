@@ -130,7 +130,8 @@ by the parties' attorneys (stated in the UI).
 | MOB-8 | Map search (Mapbox SDK) | P1 | ⛔ | Needs a Mapbox access token; the Map tab says so |
 | MOB-9 | Push notifications (FCM/APNs) | P1 | ⛔ | Needs a Firebase project and APNs key |
 | MOB-10 | Offline cache | P2 | ⏳ | Not built: only data the MLS licences allow may be cached; decide per licence |
-| MOB-11 | Store release (signing, listings, privacy labels) | P1 | ⛔ | Needs developer accounts and legal texts |
+| MOB-11 | Store release (signing, listings, privacy labels) | P1 | ⛔ | Signing config, release workflow (signed `.aab`), placeholder icon/splash ready; blocked on developer accounts, final artwork and legal texts |
+| MOB-16 | E-mail and website links open in the app (App Links / Universal Links): password reset, e-mail verification, unsubscribe, listings and dashboard pages; resume after sign-in | P1 | ✅ (verification files need the signing fingerprint and Apple team id) | `router_redirect_test`, `email_links_test`, `app-links.test.ts` |
 
 | MOB-12 | Offers: list by status, negotiation history, record (`Idempotency-Key`), edit draft, submit, counter, accept (opens the transaction), reject, withdraw — actions follow the API's `can` flags | P1 | ✅ | `offers_test` |
 | MOB-13 | Agent directory (name, language, specialty) and public agent profile with verified licence | P1 | ✅ | `agents_test` |
