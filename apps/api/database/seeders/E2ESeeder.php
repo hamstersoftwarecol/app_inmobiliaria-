@@ -7,6 +7,7 @@ use App\Domain\Identity\Enums\RoleName;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\AgentLicense;
+use App\Models\Appointment;
 use App\Models\CrmTask;
 use App\Models\Lead;
 use App\Models\Office;
@@ -16,6 +17,7 @@ use App\Models\PropertyType;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
@@ -84,6 +86,14 @@ class E2ESeeder extends Seeder
 
         // Listings: one published, one draft ready for a broker to publish.
         $valeria = Agent::query()->where('slug', 'e2e-valeria-verified')->firstOrFail();
+        // Showings: wide daily hours so slots exist whenever the suite runs; earlier bookings removed.
+        Appointment::query()->where('agent_id', $valeria->id)->delete();
+        $valeria->timeOff()->delete();
+        $valeria->availabilities()->delete();
+        foreach (range(1, 7) as $weekday) {
+            $valeria->availabilities()->create(['weekday' => $weekday, 'start_time' => '08:00', 'end_time' => '20:00']);
+        }
+        DB::table('notifications')->whereIn('notifiable_id', User::query()->where('email', 'like', 'e2e.%@example.com')->pluck('id'))->delete();
         $type = PropertyType::query()->where('code', 'single_family')->value('id');
         foreach ([
             ['slug' => 'e2e-12-example-lane-hoboken', 'title' => 'E2E published colonial', 'published' => true, 'street' => '12 Example Lane', 'lat' => 40.7440, 'lng' => -74.0324],

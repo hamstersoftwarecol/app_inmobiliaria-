@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hitlease Real Estate API
-  version: 1.0.0-alpha.5
+  version: 1.0.0-alpha.6
   summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
   description: |
     Central API consumed by the Next.js web app and the Flutter mobile app.
@@ -62,7 +62,9 @@ tags:
   - name: CRM
     description: Leads, pipeline, activities, tasks and reports (`/crm/*` requires MFA for staff). Public inquiries create leads.
   - name: Appointments
-    description: Planned (Sprint 8).
+    description: Showing availability, requests and bookings (no double-booking, DST-safe), reminders.
+  - name: Notifications
+    description: In-app notification center, e-mail preferences and one-click unsubscribe.
   - name: Transactions
     description: Planned (Sprint 9).
 
@@ -2420,14 +2422,476 @@ paths:
         "403": { $ref: "#/components/responses/Forbidden" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+  /properties/{slug}/showing-slots:
+    get:
+      tags: [Appointments]
+      operationId: listShowingSlots
+      summary: Free showing slots for a listing (public; no personal data)
+      description: |
+        Slots come from the listing agent's weekly hours (local time of the agency, converted per date so
+        they stay at the same local times across DST), minus time off and live showings, at least 2 hours
+        ahead and at most 30 days ahead. Only internal listings that are active or coming soon are bookable.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - { name: slug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }
+        - { name: from, in: query, description: "Agency calendar day (default today)", schema: { type: string, format: date } }
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 14, default: 7 } }
+      responses:
+        "200":
+          description: Slots per day
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ShowingSlots" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /appointments:
     get:
       tags: [Appointments]
       operationId: listAppointments
-      summary: "[Planned] Showings"
-      x-status: planned
+      summary: Showings visible to the user (own requests, hosted showings, or all with `appointments.view_any`)
+      parameters:
+        - { name: when, in: query, schema: { type: string, enum: [upcoming, past], default: upcoming } }
+        - { name: status, in: query, schema: { type: string, enum: [requested, confirmed, declined, cancelled, completed, no_show] } }
+        - { name: role, in: query, schema: { type: string, enum: [requester, host] } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
       responses:
-        "200": { $ref: "#/components/responses/Planned" }
+        "200":
+          description: Paginated showings
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/Appointment" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Appointments]
+      operationId: requestShowing
+      summary: Request a published slot (`appointments.request`); joins or opens the visitor's CRM lead
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ClientChannel"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [property_slug, starts_at, contact_consent]
+              properties:
+                property_slug: { type: string }
+                starts_at: { type: string, format: date-time, description: Must equal a slot returned by showing-slots }
+                phone: { type: string }
+                notes: { type: string, maxLength: 1000 }
+                contact_consent: { type: boolean, const: true }
+      responses:
+        "201":
+          description: Requested (awaiting the agent's confirmation)
+          headers:
+            Idempotent-Replayed: { description: "`true` when this is the stored response of an earlier request with the same key", schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`slot_unavailable` or `idempotency_in_progress`", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /appointments/book:
+    post:
+      tags: [Appointments]
+      operationId: bookShowing
+      summary: Book a confirmed showing (own calendar with `appointments.manage_own`, any agent with `appointments.manage_any`)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [starts_at]
+              properties:
+                agent_id: { type: integer, description: Managers only }
+                property_id: { type: integer }
+                lead_id: { type: integer, description: Must be visible to the caller; fills the contact details }
+                contact_name: { type: string, description: Required without lead_id }
+                contact_email: { type: string, format: email }
+                contact_phone: { type: string }
+                starts_at: { type: string, format: date-time }
+                duration_minutes: { type: integer, minimum: 15, maximum: 240 }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Appointments]
+      operationId: getAppointment
+      summary: A showing (requester, host or `appointments.view_any`)
+      responses:
+        "200":
+          description: Showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /appointments/{appointment}/confirm:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: confirmShowing
+      summary: "Confirm a requested showing (host or manager); the visitor gets an .ics invite"
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}/decline:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: declineShowing
+      summary: "Decline a requested showing (host or manager)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}/cancel:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: cancelShowing
+      summary: "Cancel a requested or confirmed showing (requester, host or manager)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}/reschedule:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: rescheduleShowing
+      summary: "Move a showing: requesters pick a published slot (back to requested); hosts any free time (stays confirmed)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [starts_at]
+              properties:
+                starts_at: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}/complete:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: completeShowing
+      summary: "Record the outcome after the start time (host or manager)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome: { type: string, enum: [completed, no_show] }
+                feedback_rating: { type: integer, minimum: 1, maximum: 5 }
+                feedback_comment: { type: string, maxLength: 2000 }
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /me/availability:
+    get:
+      tags: [Appointments]
+      operationId: getOwnAvailability
+      summary: The agent's weekly showing hours and upcoming time off
+      responses:
+        "200":
+          description: Availability
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Availability" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      tags: [Appointments]
+      operationId: replaceOwnAvailability
+      summary: Replace the weekly hours (local agency time; windows on a day must not overlap)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [windows]
+              properties:
+                windows: { type: array, maxItems: 35, items: { $ref: "#/components/schemas/AvailabilityWindow" } }
+      responses:
+        "200":
+          description: Availability
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Availability" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /me/time-off:
+    post:
+      tags: [Appointments]
+      operationId: addTimeOff
+      summary: Block a period (no slots are offered during it)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [starts_at, ends_at]
+              properties:
+                starts_at: { type: string, format: date-time }
+                ends_at: { type: string, format: date-time }
+                reason: { type: string, maxLength: 200 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/TimeOff" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /me/time-off/{timeOff}:
+    delete:
+      tags: [Appointments]
+      operationId: deleteTimeOff
+      summary: Remove time off
+      parameters:
+        - { name: timeOff, in: path, required: true, schema: { type: integer } }
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /me/notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: In-app notifications, newest first
+      parameters:
+        - { name: unread, in: query, schema: { type: boolean } }
+        - $ref: "#/components/parameters/Page"
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AppNotification" } }
+                  meta:
+                    type: object
+                    properties:
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                      total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /me/notifications/unread-count:
+    get:
+      tags: [Notifications]
+      operationId: unreadNotificationCount
+      summary: Unread count (for the header badge)
+      responses:
+        "200": { $ref: "#/components/responses/UnreadCount" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /me/notifications/{notification}/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      summary: Mark one notification as read
+      parameters:
+        - { name: notification, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { $ref: "#/components/responses/UnreadCount" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /me/notifications/read-all:
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      summary: Mark everything as read
+      responses:
+        "200": { $ref: "#/components/responses/UnreadCount" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /me/notification-preferences:
+    get:
+      tags: [Notifications]
+      operationId: getNotificationPreferences
+      summary: E-mail preference per category (in-app notifications are always stored)
+      responses:
+        "200":
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/NotificationPreferences" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    put:
+      tags: [Notifications]
+      operationId: updateNotificationPreferences
+      summary: Turn optional e-mails on or off (marketing changes are audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mail]
+              properties:
+                mail:
+                  type: object
+                  additionalProperties: { type: boolean }
+                  description: "Keys: showing_updates, showing_reminders, lead_updates, task_reminders, saved_search_alerts, licence_updates, marketing"
+      responses:
+        "200":
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/NotificationPreferences" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /notifications/unsubscribe:
+    post:
+      tags: [Notifications]
+      operationId: unsubscribe
+      summary: One-click unsubscribe from an e-mail link (RFC 8058; token in body or query)
+      security: []
+      parameters:
+        - { name: token, in: query, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string }
+      responses:
+        "200":
+          description: Unsubscribed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  event: { type: string }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /transactions:
     get:
       tags: [Transactions]
@@ -2463,6 +2927,11 @@ components:
       name: per_page
       in: query
       schema: { type: integer, minimum: 1, maximum: 100 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: Optional. Retries with the same key and body return the first successful response (24 h); a different body is rejected (`idempotency_key_reused`).
+      schema: { type: string, pattern: "^[A-Za-z0-9_-]{8,100}$" }
     UserId:
       name: user
       in: path
@@ -2470,6 +2939,17 @@ components:
       schema: { type: integer }
 
   responses:
+    UnreadCount:
+      description: Unread notifications
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  count: { type: integer }
     Message:
       description: Informational message
       content:
@@ -3062,6 +3542,113 @@ components:
                   source: { type: string }
                   changed_at: { type: string, format: date-time }
 
+    Appointment:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [requested, confirmed, declined, cancelled, completed, no_show] }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        timezone: { type: string, examples: [America/New_York] }
+        property:
+          oneOf:
+            - type: object
+              properties:
+                slug: { type: string }
+                title: { type: string }
+                street_address: { type: [string, "null"], description: "Shown to hosts, for confirmed showings, or when the listing shows it" }
+                city: { type: [string, "null"] }
+                state: { type: string }
+            - type: "null"
+        agent:
+          type: object
+          properties:
+            id: { type: integer }
+            full_name: { type: [string, "null"] }
+            phone: { type: [string, "null"] }
+        contact:
+          description: Hosts and managers only
+          oneOf:
+            - type: object
+              properties:
+                name: { type: string }
+                email: { type: [string, "null"] }
+                phone: { type: [string, "null"] }
+            - type: "null"
+        lead_id: { type: [integer, "null"], description: Hosts and managers only }
+        notes: { type: [string, "null"] }
+        status_reason: { type: [string, "null"] }
+        feedback:
+          description: Hosts and managers only
+          oneOf:
+            - type: object
+              properties:
+                rating: { type: [integer, "null"] }
+                comment: { type: [string, "null"] }
+            - type: "null"
+        can:
+          type: object
+          properties:
+            confirm: { type: boolean }
+            decline: { type: boolean }
+            cancel: { type: boolean }
+            reschedule: { type: boolean }
+            complete: { type: boolean }
+        created_at: { type: [string, "null"], format: date-time }
+    ShowingSlots:
+      type: object
+      properties:
+        bookable: { type: boolean }
+        timezone: { type: [string, "null"] }
+        duration_minutes: { type: [integer, "null"] }
+        days:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              slots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    starts_at: { type: string, format: date-time }
+                    ends_at: { type: string, format: date-time }
+    AvailabilityWindow:
+      type: object
+      required: [weekday, start_time, end_time]
+      properties:
+        weekday: { type: integer, minimum: 1, maximum: 7, description: ISO weekday (1 = Monday) }
+        start_time: { type: string, pattern: "^\\d{2}:\\d{2}$" }
+        end_time: { type: string, pattern: "^\\d{2}:\\d{2}$" }
+    TimeOff:
+      type: object
+      properties:
+        id: { type: integer }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        reason: { type: [string, "null"] }
+    Availability:
+      type: object
+      properties:
+        timezone: { type: string }
+        windows: { type: array, items: { $ref: "#/components/schemas/AvailabilityWindow" } }
+        time_off: { type: array, items: { $ref: "#/components/schemas/TimeOff" } }
+    AppNotification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: [string, "null"], examples: [lead.assigned, showing.confirmed, crm.task_due] }
+        data: { type: object }
+        read_at: { type: [string, "null"], format: date-time }
+        created_at: { type: [string, "null"], format: date-time }
+    NotificationPreferences:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          mail: { type: boolean }
+          consented_at: { type: [string, "null"] }
     LeadStatus:
       type: string
       enum: [new, contacted, qualified, showing, negotiating, won, lost]

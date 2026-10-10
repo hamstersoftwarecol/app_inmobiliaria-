@@ -22,10 +22,14 @@ use App\Http\Controllers\Api\V1\Crm\TaskController;
 use App\Http\Controllers\Api\V1\Manage\PropertyController as ManagePropertyController;
 use App\Http\Controllers\Api\V1\Me\AgentProfileController;
 use App\Http\Controllers\Api\V1\Me\FavoriteController;
+use App\Http\Controllers\Api\V1\Me\NotificationController;
 use App\Http\Controllers\Api\V1\Me\SavedSearchController;
 use App\Http\Controllers\Api\V1\Public\AgentDirectoryController;
 use App\Http\Controllers\Api\V1\Public\InquiryController;
 use App\Http\Controllers\Api\V1\Public\PropertyController;
+use App\Http\Controllers\Api\V1\Showings\AppointmentController;
+use App\Http\Controllers\Api\V1\Showings\AvailabilityController;
+use App\Http\Controllers\Api\V1\Showings\ShowingSlotController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -47,6 +51,23 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     });
     Route::get('/properties/{slug}', [PropertyController::class, 'show'])
         ->where('slug', '[a-z0-9-]+')->name('properties.show');
+
+    Route::get('/properties/{slug}/showing-slots', [ShowingSlotController::class, 'index'])
+        ->where('slug', '[a-z0-9-]+')->middleware('throttle:search')->name('properties.showing-slots');
+
+    // ---------------------------------------------------------------- Showings
+    Route::prefix('appointments')->name('appointments.')->middleware(['auth:sanctum', 'active'])->group(function () {
+        Route::get('/', [AppointmentController::class, 'index'])->name('index');
+        Route::post('/', [AppointmentController::class, 'store'])->middleware(['idempotent', 'throttle:bookings'])->name('store');
+        Route::post('/book', [AppointmentController::class, 'book'])->middleware(['idempotent', 'throttle:bookings'])->name('book');
+        Route::get('/{appointment}', [AppointmentController::class, 'show'])->whereNumber('appointment')->name('show');
+        foreach (['confirm', 'decline', 'cancel', 'reschedule', 'complete'] as $action) {
+            Route::post("/{appointment}/{$action}", [AppointmentController::class, $action])->whereNumber('appointment')->name($action);
+        }
+    });
+
+    Route::post('/notifications/unsubscribe', [NotificationController::class, 'unsubscribe'])
+        ->middleware('throttle:inquiries')->name('notifications.unsubscribe');
 
     Route::post('/inquiries', [InquiryController::class, 'store'])->middleware('throttle:inquiries')->name('inquiries.store');
 
@@ -91,6 +112,18 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('/agent-profile', [AgentProfileController::class, 'show'])->name('agent-profile.show');
         Route::patch('/agent-profile', [AgentProfileController::class, 'update'])->name('agent-profile.update');
         Route::post('/agent-profile/licenses', [AgentProfileController::class, 'storeLicense'])->name('agent-profile.licenses.store');
+
+        Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
+        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])->name('notifications.unread-count');
+        Route::post('/notifications/read-all', [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead'])->whereUuid('notification')->name('notifications.read');
+        Route::get('/notification-preferences', [NotificationController::class, 'preferences'])->name('notification-preferences.show');
+        Route::put('/notification-preferences', [NotificationController::class, 'updatePreferences'])->name('notification-preferences.update');
+
+        Route::get('/availability', [AvailabilityController::class, 'show'])->name('availability.show');
+        Route::put('/availability', [AvailabilityController::class, 'update'])->name('availability.update');
+        Route::post('/time-off', [AvailabilityController::class, 'storeTimeOff'])->name('time-off.store');
+        Route::delete('/time-off/{timeOff}', [AvailabilityController::class, 'destroyTimeOff'])->whereNumber('timeOff')->name('time-off.destroy');
 
         Route::middleware('can:favorites.manage')->group(function () {
             Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');

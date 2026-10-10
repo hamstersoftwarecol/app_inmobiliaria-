@@ -33,9 +33,9 @@ final class LeadService
      *
      * @param  array{first_name: string, last_name?: ?string, email?: ?string, phone?: ?string, message?: ?string, intent?: ?string, preferred_language?: ?string, marketing_consent?: bool}  $data
      */
-    public function recordInquiry(array $data, LeadSource $source, ?Property $property, ?Agent $agent, ?string $ip): Lead
+    public function recordInquiry(array $data, LeadSource $source, ?Property $property, ?Agent $agent, ?string $ip, bool $notifyAssignee = true): Lead
     {
-        return DB::transaction(function () use ($data, $source, $property, $agent, $ip) {
+        return DB::transaction(function () use ($data, $source, $property, $agent, $ip, $notifyAssignee) {
             $emailKey = LeadKeys::email($data['email'] ?? null);
             $phoneKey = LeadKeys::phone($data['phone'] ?? null);
             $context = array_filter([
@@ -81,7 +81,7 @@ final class LeadService
 
             $assignee = $this->activeAgent($property?->listing_agent_id) ?? ($agent && $agent->status === AgentStatus::Active ? $agent : null);
             if ($assignee !== null) {
-                $this->applyAssignment($lead, $assignee, null);
+                $this->applyAssignment($lead, $assignee, null, $notifyAssignee);
             } else {
                 Notification::send($this->assigners(), new UnassignedLeadNotification($lead));
             }
@@ -262,6 +262,17 @@ final class LeadService
             ->latest('id')
             ->limit(10)
             ->get();
+    }
+
+    /**
+     * Timeline entry written by another module (e.g. showings).
+     *
+     * @param  array<string, mixed>  $metadata
+     */
+    public function recordEvent(Lead $lead, ?User $actor, ActivityType $type, ?string $body, array $metadata = []): void
+    {
+        $this->addActivity($lead, $actor, $type, $body, $metadata);
+        $lead->forceFill(['last_activity_at' => now()])->save();
     }
 
     public function canAssign(User $actor): bool

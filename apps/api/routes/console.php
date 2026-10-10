@@ -1,5 +1,6 @@
 <?php
 
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
 // Agency time zone so "expired yesterday" matches New Jersey calendar days.
@@ -31,3 +32,8 @@ Schedule::command('hitlease:saved-searches:alert --frequency=weekly')
 
 // CRM: task reminders shortly before each due time.
 Schedule::command('hitlease:crm:task-reminders')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+
+// Showings: reminders 24 h and 1 h before confirmed showings; expired idempotency keys.
+Schedule::command('hitlease:showings:reminders')->everyFiveMinutes()->withoutOverlapping()->onOneServer();
+Schedule::call(fn () => DB::table('idempotency_keys')->where('expires_at', '<', now())->delete())
+    ->name('idempotency-keys:prune')->hourly()->onOneServer();

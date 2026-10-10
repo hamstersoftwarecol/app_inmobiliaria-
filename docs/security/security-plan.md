@@ -127,12 +127,26 @@ defaults when a role is first created; the super admin role always gets everythi
 * New permissions are granted automatically to roles whose defaults include them when a release
   introduces them; existing customizations are preserved.
 
+### Showings and notifications (Sprint 8)
+
+* Overlapping showings for an agent are impossible at the database level (exclusion constraint),
+  so concurrent requests for one slot fail cleanly (`slot_unavailable`) for all but one.
+* Visitors can only book published slots; requesting requires sign-in, `appointments.request` and
+  explicit consent to be contacted. Contact details, CRM link and feedback are visible only to the
+  host and managers; the street address is shared with the visitor once the showing is confirmed
+  (or when the listing already shows it).
+* `Idempotency-Key` (per user, 24 h, request-hash checked) prevents duplicate bookings on retries;
+  a reused key with a different body is rejected.
+* Optional e-mails honor per-category preferences and carry a one-click unsubscribe (token
+  encrypted with `APP_KEY`; the landing page needs a click, so link scanners don't unsubscribe
+  people). Security e-mails are not optional. Marketing is opt-in, timestamped and audited.
+* Rate limits: showing requests/bookings 10/min per user; unsubscribe and inquiries 5/min, 20/h.
+
 ## 3. Planned controls (by sprint)
 
 | Sprint | Control |
 |---|---|
 | 4 | R2 storage for media (private bucket for documents), malware scanning for uploads |
-| 8 | Appointment exclusion constraint (no double booking), notification consent & unsubscribe |
 | 9 | Document access policies, signed URLs (≤5 min), access logs, antivirus scanning (ClamAV) before availability, retention policies, `Idempotency-Key` on offers/transactions/appointments |
 | 11 | Admin audit UI, alerting on suspicious security events |
 | 12 | DAST (OWASP ZAP baseline) in CI, dependency/license review, backup restore drills, penetration test |

@@ -80,11 +80,20 @@ dependency (not counted as done).
 | CRM-8 | Data-subject requests (export/erase a lead's personal data) and retention schedule | P1 | ⏳ | Needs the agency's privacy policy |
 | CRM-9 | Mobile CRM (agent mode) | P1 | ⏳ | Sprint 10 |
 
-## Sprint 8 — Showings & notifications
+## Sprint 8 — Showings & notifications (delivered)
 
-Availability calendar, request → confirm → reminder → feedback flow, reschedule/cancel,
-DST-correct time zones, no-overlap exclusion constraint, `Idempotency-Key`; notification service
-(mail, in-app, push via FCM, optional SMS) with preferences and consent; Reverb for real time.
+| ID | Item | Pri | Status | Evidence |
+|---|---|---|---|---|
+| SHW-1 | Agent weekly hours + time off; public slots per listing (DST-safe, notice and horizon limits) | P0 | ✅ | `ShowingsTest`, `/dashboard/availability` |
+| SHW-2 | Request → confirm/decline → reschedule/cancel → outcome + feedback, linked to the CRM lead timeline | P0 | ✅ | `ShowingsTest`, `/dashboard/showings`, E2E `showings.spec.ts` |
+| SHW-3 | No double-booking enforced by a PostgreSQL exclusion constraint; `Idempotency-Key` on requests/bookings | P0 | ✅ | `ShowingsTest` |
+| SHW-4 | Reminders 24 h and 1 h before; .ics invite on confirmation | P1 | ✅ | `ShowingsTest` |
+| NTF-1 | In-app notification center (list, unread badge, mark read) | P1 | ✅ | `NotificationCenterTest`, header bell |
+| NTF-2 | Per-category e-mail preferences, marketing opt-in with consent record, one-click unsubscribe (RFC 8058) | P1 | ✅ | `NotificationCenterTest`, settings, `/unsubscribe` |
+| NTF-3 | Real-time delivery (Laravel Reverb) | P2 | ⏳ | Badge polls every minute meanwhile |
+| NTF-4 | Push notifications (FCM) | P1 | ⛔ | Needs a Firebase project |
+| NTF-5 | SMS (e.g. reminders) | P2 | ⛔ | Needs an SMS provider and TCPA-compliant consent flow |
+| SHW-5 | Open houses (public events) | P2 | ⏳ | |
 
 ## Sprint 9 — Offers, transactions, documents, messaging
 

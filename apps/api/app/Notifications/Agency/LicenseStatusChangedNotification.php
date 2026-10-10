@@ -3,7 +3,9 @@
 namespace App\Notifications\Agency;
 
 use App\Domain\Agency\Enums\LicenseStatus;
+use App\Domain\Notifications\Enums\NotificationEvent;
 use App\Models\AgentLicense;
+use App\Notifications\Concerns\HonorsPreferences;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -11,11 +13,16 @@ use Illuminate\Notifications\Notification;
 
 class LicenseStatusChangedNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use HonorsPreferences, Queueable;
 
     public function __construct(public readonly AgentLicense $license)
     {
         $this->onQueue('notifications');
+    }
+
+    protected function preferenceEvent(): NotificationEvent
+    {
+        return NotificationEvent::LicenceUpdates;
     }
 
     /**
@@ -23,7 +30,7 @@ class LicenseStatusChangedNotification extends Notification implements ShouldQue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->preferredChannels($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -33,7 +40,7 @@ class LicenseStatusChangedNotification extends Notification implements ShouldQue
 
         $message = (new MailMessage)->subject('Your licence verification status changed');
 
-        return match ($license->status) {
+        $message = match ($license->status) {
             LicenseStatus::Verified => $message->line("Your {$label} has been verified.")
                 ->line('Your public agent profile can now be listed if you opted in.'),
             LicenseStatus::Rejected => $message->line("Your {$label} could not be verified.")
@@ -45,6 +52,8 @@ class LicenseStatusChangedNotification extends Notification implements ShouldQue
                 ->line('Submit the renewed licence so it can be verified again.'),
             default => $message->line("Your {$label} status is now {$license->status->value}."),
         };
+
+        return $this->withUnsubscribe($message, $notifiable);
     }
 
     /**

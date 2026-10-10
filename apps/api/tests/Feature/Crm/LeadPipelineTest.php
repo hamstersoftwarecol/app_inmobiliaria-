@@ -52,7 +52,7 @@ class LeadPipelineTest extends TestCase
         $this->assertTrue($lead->contact_consent);
         $this->assertSame('127.0.0.1', $lead->consent_ip);
         $this->assertSame(['inquiry', 'assignment'], $lead->activities()->pluck('type')->map->value->sort()->values()->reverse()->values()->all());
-        Notification::assertSentTo(User::find($agent->user_id), LeadAssignedNotification::class, fn ($n, $channels) => $channels === ['mail', 'database']);
+        Notification::assertSentTo(User::find($agent->user_id), LeadAssignedNotification::class, fn ($n, $channels) => $channels == ['database', 'mail']);
     }
 
     public function test_repeat_inquiries_from_the_same_person_join_the_open_lead(): void

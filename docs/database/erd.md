@@ -187,9 +187,13 @@ expiry) is deferred until the first agreement exists.
 * ✅ `crm_tasks` (optional lead, `assigned_to`, `created_by`, `due_at`, `completed_at`,
   `reminder_sent_at`; partial index for pending reminders).
 * 🗓️ Configurable `crm_pipelines` / `crm_stages` (stages are a fixed enum for now).
-* `appointments` (`starts_at`/`ends_at` timestamptz + `timezone`, status, **exclusion constraint**
-  `EXCLUDE USING gist (agent_id WITH =, tstzrange(starts_at, ends_at) WITH &&) WHERE status in
-  (requested, confirmed)` to prevent double-booking), `agent_availability`.
+* ✅ `appointments` (property, agent, lead, `requested_by`, contact snapshot, `starts_at`/`ends_at`
+  timestamptz + `timezone`, status requested|confirmed|declined|cancelled|completed|no_show, reason,
+  feedback rating 1–5 (CHECK), reminder timestamps; **exclusion constraint**
+  `EXCLUDE USING gist (agent_id WITH =, tstzrange(starts_at, ends_at, '[)') WITH &&) WHERE status in
+  (requested, confirmed)` — needs `btree_gist` — so an agent can never be double-booked).
+* ✅ `agent_availabilities` (ISO weekday + local `start_time`/`end_time`, CHECK start < end) and
+  `agent_time_off` (timestamptz range).
 
 ## 5. Transactions, documents, messaging, notifications 🗓️
 
@@ -198,10 +202,12 @@ expiry) is deferred until the first agreement exists.
 * `documents` (private R2 key, mime, size, sha256, classification, retention_until),
   `document_versions`, `document_access_logs`.
 * `conversations`, `conversation_participants`, `messages` (read receipts per participant).
-* `notifications` (Laravel), `notification_preferences` (channel × event, consent timestamps).
+* ✅ `notifications` (Laravel database notifications) and ✅ `notification_preferences`
+  (PK user + event, `mail` flag, `consented_at` for opt-in categories such as marketing).
 * `system_settings` (key/value jsonb, audited).
 
-## 6. Idempotency 🗓️
+## 6. Idempotency ✅
 
-`idempotency_keys` (`key`, `user_id`, `request_hash`, `response jsonb`, `expires_at`) backs the
-`Idempotency-Key` header on critical POSTs (offers, appointments, transactions).
+`idempotency_keys` (unique `user_id` + `key`, method, path, `request_hash`, stored response status
+and body, `expires_at` 24 h, pruned hourly) backs the `Idempotency-Key` header on showing requests
+and bookings (offers and transactions will use it too). Only successful responses are stored.

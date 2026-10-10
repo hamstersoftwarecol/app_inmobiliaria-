@@ -50,11 +50,11 @@ flowchart LR
 | Search | **Implemented** (Sprint 4); map UI blocked (Mapbox token) | Filters, bbox/radius/polygon (PostGIS), autocomplete, favorites, saved searches, alerts | `PropertySearch`, `SavedSearchAlerts`, `FavoriteController`, `SavedSearchController` |
 | Agency & Agents | **Implemented** (Sprint 2) | Agencies, offices (PostGIS), agent profiles, public directory, licence verification workflow + daily expiry | `AgentProfileService`, `LicenseVerificationService`, `AgentPolicy`, `AgentLicensePolicy`, `LicenseStatus` |
 | CRM | **Implemented** (Sprint 7) | Inquiries, leads, pipeline, timeline, tasks and reminders, duplicates/merge, reports | `LeadService`, `LeadPolicy`, `CrmTaskPolicy`, `CrmReports`, `SendCrmTaskReminders` |
-| Scheduling | Planned (Sprint 8) | Showings, availability, open houses, reminders (DST-safe) | — |
+| Scheduling | **Implemented** (Sprint 8); open houses planned | Showings, availability, time off, slots (DST-safe), reminders, idempotent requests | `ShowingSlots`, `AppointmentService`, `HonorIdempotencyKey`, `SendShowingReminders` |
 | Transactions | Planned (Sprint 9) | Offers, transactions, milestones, contingencies | — |
 | Documents | Planned (Sprint 9) | Private storage, versions, signed URLs, access logs, AV scan | — |
 | Messaging | Planned (Sprint 8–9) | Conversations, Reverb WebSockets, read receipts | — |
-| Notifications | Partially (auth e-mails) | Mail/push/in-app/SMS, preferences, consent | `ResetPasswordNotification`, `VerifyEmailNotification` |
+| Notifications | **Implemented** for mail + in-app (Sprint 8); push/SMS blocked | Notification center, per-category preferences, consent, one-click unsubscribe | `NotificationPreferences`, `HonorsPreferences`, `NotificationController` |
 | AI assistant | Planned (post-MVP) | NL → structured filters, agent writing aids, guarded by MLS/PII rules | — |
 
 ## 3. Request lifecycle (API)

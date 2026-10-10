@@ -4,6 +4,7 @@ use App\Domain\Shared\DomainException;
 use App\Http\ApiErrorRenderer;
 use App\Http\Middleware\AssignRequestId;
 use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\HonorIdempotencyKey;
 use App\Http\Middleware\RequireStaffMfa;
 use App\Http\Middleware\SecurityHeaders;
 use App\Http\Middleware\SetLocale;
@@ -30,6 +31,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'active' => EnsureUserIsActive::class,
             'mfa.staff' => RequireStaffMfa::class,
+            'idempotent' => HonorIdempotencyKey::class,
         ]);
 
         // The API never redirects unauthenticated users to a login page.

@@ -13,7 +13,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { authService } from "@/services/auth-service";
 import type { User } from "@/types/api";
 
-const MODULES = ["appointments", "transactions", "documents", "messages"] as const;
+const MODULES = ["transactions", "documents", "messages"] as const;
 
 function Overview({ user }: { user: User }) {
   const { t } = useTranslation();
@@ -32,6 +32,16 @@ function Overview({ user }: { user: User }) {
           {user.permissions?.includes("saved_searches.manage") && (
             <Link href="/dashboard/saved-searches" className={buttonVariants({ variant: "outline" })}>
               {t("nav.savedSearches")}
+            </Link>
+          )}
+          {["appointments.request", "appointments.manage_own", "appointments.manage_any", "appointments.view_any"].some((p) => user.permissions?.includes(p)) && (
+            <Link href="/dashboard/showings" className={buttonVariants({ variant: "outline" })}>
+              {t("nav.showings")}
+            </Link>
+          )}
+          {user.permissions?.includes("appointments.manage_own") && (
+            <Link href="/dashboard/availability" className={buttonVariants({ variant: "outline" })}>
+              {t("nav.availability")}
             </Link>
           )}
           {canUseCrm(user) && (

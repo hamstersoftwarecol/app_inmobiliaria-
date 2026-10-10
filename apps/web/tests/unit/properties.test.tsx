@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api-client";
 import { authService } from "@/services/auth-service";
+import { showingService } from "@/services/showing-service";
 import { PropertyDetail } from "@/features/properties/components/property-detail";
 import { formatPrice } from "@/lib/format";
 import { searchHref } from "@/lib/search";
@@ -68,6 +69,7 @@ const mlsProperty: PublicProperty = {
 describe("PropertyDetail", () => {
   it("shows MLS attribution and disclaimer and hides a suppressed address", async () => {
     vi.spyOn(authService, "me").mockRejectedValue(new ApiError(401, "unauthenticated", "Unauthenticated."));
+    vi.spyOn(showingService, "slots").mockResolvedValue({ bookable: false, timezone: null, duration_minutes: null, days: [] });
     render(
       <QueryClientProvider client={new QueryClient()}>
         <PropertyDetail property={mlsProperty} />

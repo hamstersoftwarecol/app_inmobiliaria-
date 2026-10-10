@@ -32,6 +32,13 @@ return [
         'self_registration_roles' => ['buyer', 'seller'],
     ],
 
+    'showings' => [
+        'duration_minutes' => (int) env('SHOWING_DURATION_MINUTES', 30),
+        'slot_step_minutes' => (int) env('SHOWING_SLOT_STEP_MINUTES', 30),
+        'min_notice_hours' => (int) env('SHOWING_MIN_NOTICE_HOURS', 2),
+        'max_days_ahead' => (int) env('SHOWING_MAX_DAYS_AHEAD', 30),
+    ],
+
     'media' => [
         // Filesystem disk for uploaded listing photos ("public" locally, an
         // S3-compatible disk such as Cloudflare R2 in production).

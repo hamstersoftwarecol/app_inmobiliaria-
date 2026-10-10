@@ -62,6 +62,28 @@ class Agent extends Model
     }
 
     /**
+     * @return HasMany<AgentAvailability, $this>
+     */
+    public function availabilities(): HasMany
+    {
+        return $this->hasMany(AgentAvailability::class)->orderBy('weekday')->orderBy('start_time');
+    }
+
+    /**
+     * @return HasMany<AgentTimeOff, $this>
+     */
+    public function timeOff(): HasMany
+    {
+        return $this->hasMany(AgentTimeOff::class)->orderBy('starts_at');
+    }
+
+    /** The agency's IANA zone: weekly availability windows are expressed in it. */
+    public function timezone(): string
+    {
+        return $this->agency?->timezone ?: (string) config('hitlease.agency_timezone');
+    }
+
+    /**
      * @return HasMany<AgentLicense, $this>
      */
     public function licenses(): HasMany

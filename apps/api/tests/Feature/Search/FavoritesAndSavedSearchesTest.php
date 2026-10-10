@@ -105,7 +105,7 @@ class FavoritesAndSavedSearchesTest extends TestCase
         $this->artisan('hitlease:saved-searches:alert --frequency=daily')->expectsOutputToContain('notified 1')->assertSuccessful();
 
         Notification::assertSentTo($buyer, SavedSearchMatchesNotification::class, function ($n, $channels) use ($search) {
-            return $n->search->is($search) && $n->total === 1 && $n->listings[0]['title'] === 'New match' && $channels === ['mail', 'database'];
+            return $n->search->is($search) && $n->total === 1 && $n->listings[0]['title'] === 'New match' && $channels == ['database', 'mail'];
         });
         Notification::assertSentTimes(SavedSearchMatchesNotification::class, 1);
         $this->assertNotNull($search->fresh()->last_alerted_at);

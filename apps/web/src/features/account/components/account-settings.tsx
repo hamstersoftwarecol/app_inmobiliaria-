@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RequireAuth } from "@/features/auth/components/require-auth";
 import { useTranslation } from "@/hooks/use-translation";
 import { ChangePasswordForm } from "./change-password-form";
+import { NotificationPreferencesForm } from "@/features/notifications/components/notification-preferences";
 import { MfaSettings } from "./mfa-settings";
 import { ProfileForm } from "./profile-form";
 import { SessionsList } from "./sessions-list";
@@ -21,6 +22,14 @@ export function AccountSettings() {
             </CardHeader>
             <CardContent>
               <ProfileForm user={user} />
+            </CardContent>
+          </Card>
+          <Card id="notifications">
+            <CardHeader>
+              <CardTitle>{t("notifications.preferences")}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NotificationPreferencesForm />
             </CardContent>
           </Card>
           <Card id="security">

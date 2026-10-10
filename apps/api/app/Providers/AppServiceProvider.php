@@ -54,6 +54,9 @@ class AppServiceProvider extends ServiceProvider
             Limit::perHour(20)->by('inquiry-hour:'.self::clientKey($request)),
         ]);
 
+        // Showing requests and bookings by signed-in users.
+        RateLimiter::for('bookings', fn (Request $request) => Limit::perMinute(10)->by('bookings:'.($request->user()?->id ?: self::clientKey($request))));
+
         RateLimiter::for('search', fn (Request $request) => Limit::perMinute(60)->by('search:'.($request->user()?->id ?: self::clientKey($request))));
     }
 

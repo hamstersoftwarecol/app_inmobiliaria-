@@ -2,7 +2,9 @@
 
 namespace App\Notifications\Crm;
 
+use App\Domain\Notifications\Enums\NotificationEvent;
 use App\Models\CrmTask;
+use App\Notifications\Concerns\HonorsPreferences;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,11 +12,16 @@ use Illuminate\Notifications\Notification;
 
 class TaskReminderNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use HonorsPreferences, Queueable;
 
     public function __construct(public readonly CrmTask $task)
     {
         $this->onQueue('notifications');
+    }
+
+    protected function preferenceEvent(): NotificationEvent
+    {
+        return NotificationEvent::TaskReminders;
     }
 
     /**
@@ -22,7 +29,7 @@ class TaskReminderNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['mail', 'database'];
+        return $this->preferredChannels($notifiable);
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -30,10 +37,12 @@ class TaskReminderNotification extends Notification implements ShouldQueue
         $zone = $notifiable->timezone ?: config('hitlease.agency_timezone');
         $due = $this->task->due_at->copy()->setTimezone($zone)->format('M j, Y g:i A T');
 
-        return (new MailMessage)
+        $message = (new MailMessage)
             ->subject("Reminder: {$this->task->title}")
             ->line("Your task \"{$this->task->title}\" is due {$due}.")
             ->action('Open my tasks', config('hitlease.frontend_url').'/dashboard/crm/tasks');
+
+        return $this->withUnsubscribe($message, $notifiable);
     }
 
     /**

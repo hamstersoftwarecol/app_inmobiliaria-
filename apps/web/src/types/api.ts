@@ -356,7 +356,7 @@ export interface AuditLogEntry {
 export type LeadStatus = "new" | "contacted" | "qualified" | "showing" | "negotiating" | "won" | "lost";
 export type LeadSource = "website_listing" | "website_agent" | "website_contact" | "phone" | "email" | "walk_in" | "referral" | "social" | "other";
 export type LeadIntent = "buy" | "rent" | "sell" | "other";
-export type ActivityType = "note" | "call" | "email" | "meeting" | "inquiry" | "status_change" | "assignment" | "merge";
+export type ActivityType = "note" | "call" | "email" | "meeting" | "inquiry" | "status_change" | "assignment" | "merge" | "showing";
 
 export interface LeadActivity {
   id: number;
@@ -425,3 +425,64 @@ export interface CrmSummary {
   by_source: Partial<Record<LeadSource, number>>;
   by_agent: { agent_id: number; full_name: string; assigned: number; won: number; median_response_minutes: number | null }[];
 }
+
+export type AppointmentStatus = "requested" | "confirmed" | "declined" | "cancelled" | "completed" | "no_show";
+
+export interface Appointment {
+  id: number;
+  status: AppointmentStatus;
+  starts_at: string;
+  ends_at: string;
+  timezone: string;
+  property: { slug: string; title: string; street_address: string | null; city: string | null; state: string } | null;
+  agent?: { id: number; full_name: string | null; phone: string | null };
+  contact: { name: string; email: string | null; phone: string | null } | null;
+  lead_id: number | null;
+  notes: string | null;
+  status_reason: string | null;
+  feedback: { rating: number | null; comment: string | null } | null;
+  can: { confirm: boolean; decline: boolean; cancel: boolean; reschedule: boolean; complete: boolean };
+  created_at: string | null;
+}
+
+export interface ShowingSlotDay {
+  date: string;
+  slots: { starts_at: string; ends_at: string }[];
+}
+
+export interface ShowingSlots {
+  bookable: boolean;
+  timezone: string | null;
+  duration_minutes: number | null;
+  days: ShowingSlotDay[];
+}
+
+export interface AvailabilityWindow {
+  weekday: number;
+  start_time: string;
+  end_time: string;
+}
+
+export interface TimeOff {
+  id: number;
+  starts_at: string;
+  ends_at: string;
+  reason: string | null;
+}
+
+export interface Availability {
+  timezone: string;
+  windows: AvailabilityWindow[];
+  time_off: TimeOff[];
+}
+
+export interface AppNotification {
+  id: string;
+  type: string | null;
+  data: Record<string, unknown>;
+  read_at: string | null;
+  created_at: string | null;
+}
+
+export type NotificationEvent = "showing_updates" | "showing_reminders" | "lead_updates" | "task_reminders" | "saved_search_alerts" | "licence_updates" | "marketing";
+export type NotificationPreferences = Record<NotificationEvent, { mail: boolean; consented_at: string | null }>;

@@ -2,7 +2,9 @@
 
 namespace App\Notifications\Search;
 
+use App\Domain\Notifications\Enums\NotificationEvent;
 use App\Models\SavedSearch;
+use App\Notifications\Concerns\HonorsPreferences;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
@@ -10,7 +12,7 @@ use Illuminate\Notifications\Notification;
 
 class SavedSearchMatchesNotification extends Notification implements ShouldQueue
 {
-    use Queueable;
+    use HonorsPreferences, Queueable;
 
     /**
      * @param  list<array{slug: string, title: string, list_price: float|null, listing_type: string, city: string|null, state: string|null}>  $listings
@@ -23,6 +25,11 @@ class SavedSearchMatchesNotification extends Notification implements ShouldQueue
         $this->onQueue('notifications');
     }
 
+    protected function preferenceEvent(): NotificationEvent
+    {
+        return NotificationEvent::SavedSearchAlerts;
+    }
+
     /**
      * Mail only reaches verified addresses; the in-app notification is always stored.
      *
@@ -30,7 +37,9 @@ class SavedSearchMatchesNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return $notifiable->hasVerifiedEmail() ? ['mail', 'database'] : ['database'];
+        $channels = $this->preferredChannels($notifiable);
+
+        return $notifiable->hasVerifiedEmail() ? $channels : array_values(array_diff($channels, ['mail']));
     }
 
     public function toMail(object $notifiable): MailMessage
@@ -45,9 +54,9 @@ class SavedSearchMatchesNotification extends Notification implements ShouldQueue
             $message->line("• {$listing['title']} — {$price} — {$listing['city']}, {$listing['state']}: {$frontend}/properties/{$listing['slug']}");
         }
 
-        return $message
+        return $this->withUnsubscribe($message
             ->action('Manage saved searches and alerts', "{$frontend}/dashboard/saved-searches")
-            ->line('You receive this e-mail because you turned on alerts for this search. You can turn them off at any time from the link above.');
+            ->line('You receive this e-mail because you turned on alerts for this search. You can turn them off at any time from the link above.'), $notifiable);
     }
 
     /**

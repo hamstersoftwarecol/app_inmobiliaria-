@@ -41,6 +41,11 @@ export function describeActivity(a: LeadActivity, t: (k: string, p?: Record<stri
       return [m.property_title as string | undefined, m.source ? t(`crm.sources.${m.source as string}`) : undefined].filter(Boolean).join(" · ");
     case "merge":
       return (m.merged_name as string | undefined) ?? "";
+    case "showing": {
+      const status = m.event as string;
+      const label = ["requested", "confirmed", "declined", "cancelled", "completed", "no_show"].includes(status) ? t(`showings.statuses.${status}`) : status;
+      return [label, m.starts_at ? new Date(m.starts_at as string).toLocaleString() : null, m.rating ? `★ ${m.rating}` : null].filter(Boolean).join(" · ");
+    }
     default:
       return "";
   }

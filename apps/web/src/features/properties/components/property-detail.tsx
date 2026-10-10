@@ -9,6 +9,7 @@ import { useTranslation } from "@/hooks/use-translation";
 import { formatNumber, formatPrice } from "@/lib/format";
 import type { PublicProperty } from "@/types/api";
 import { ContactForm } from "@/features/crm/components/contact-form";
+import { ShowingScheduler } from "@/features/showings/components/showing-scheduler";
 import { FavoriteButton } from "./favorite-button";
 
 function Gallery({ photos, title }: { photos: PublicProperty["photos"]; title: string }) {
@@ -148,6 +149,9 @@ export function PropertyDetail({ property }: { property: PublicProperty }) {
               )}
             </div>
           )}
+          <div className="rounded-lg border border-border p-5">
+            <ShowingScheduler slug={property.slug} />
+          </div>
           <div className="rounded-lg border border-border p-5">
             <ContactForm propertySlug={property.slug} defaultIntent={property.listing_type === "rent" ? "rent" : "buy"} title={t("contact.title")} />
           </div>

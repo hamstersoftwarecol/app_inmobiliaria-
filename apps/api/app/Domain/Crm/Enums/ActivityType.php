@@ -14,6 +14,7 @@ enum ActivityType: string
     case StatusChange = 'status_change';
     case Assignment = 'assignment';
     case Merge = 'merge';
+    case Showing = 'showing';
 
     /**
      * @return list<self>

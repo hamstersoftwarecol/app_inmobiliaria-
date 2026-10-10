@@ -29,6 +29,8 @@ interface RequestOptions {
   query?: Record<string, string | number | boolean | undefined | null>;
   signal?: AbortSignal;
   locale?: string;
+  /** Extra request headers (e.g. `Idempotency-Key`). */
+  headers?: Record<string, string>;
 }
 
 const XSRF_COOKIE = "XSRF-TOKEN";
@@ -91,6 +93,7 @@ export async function apiRequest<T>(method: Method, path: string, options: Reque
     "X-Requested-With": "XMLHttpRequest",
   };
   if (options.locale) headers["Accept-Language"] = options.locale;
+  if (options.headers) Object.assign(headers, options.headers);
   if (options.body !== undefined) headers["Content-Type"] = "application/json";
   const xsrf = readCookie(XSRF_COOKIE);
   if (xsrf) headers["X-XSRF-TOKEN"] = xsrf;
