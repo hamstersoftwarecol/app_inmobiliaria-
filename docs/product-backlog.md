@@ -116,11 +116,23 @@ dependency (not counted as done).
 Offers are records for the agents' workflow; the binding contract is the signed agreement reviewed
 by the parties' attorneys (stated in the UI).
 
-## Sprint 10 — Mobile feature parity
+## Sprint 10 — Mobile feature parity (delivered)
 
-Search, map (Mapbox SDK — needs token), details, favorites, saved searches, showings,
-messages, notifications (FCM — needs Firebase project), agent mode (dashboard, leads, pipeline,
-tasks, transactions). Offline cache only for data the MLS licence allows.
+| ID | Item | Pri | Status | Evidence |
+|---|---|---|---|---|
+| MOB-1 | Search with city/ZIP autocomplete, filters (type, price, beds, baths), sorting, infinite scroll; `X-Hitlease-Client: mobile` so MLS mobile display rules apply | P0 | ✅ | `search_screen_test`, `repositories_test` |
+| MOB-2 | Listing detail: gallery, facts, MLS attribution/disclaimer, agent contact (call/e-mail), favorites | P0 | ✅ | `search_screen_test` |
+| MOB-3 | Favorites and saved searches (create from a search, alert frequency, replay, delete) | P0 | ✅ | `search_filters_test` |
+| MOB-4 | Showing requests (slots, consent, `Idempotency-Key`), my showings; agents confirm/decline/cancel | P0 | ✅ | `repositories_test` |
+| MOB-5 | Notification center with unread badge (polled) and deep links | P1 | ✅ | `app_notification_test`, `home_screen_test` |
+| MOB-6 | Messages: inbox, threads, "Message the agent", deal conversations | P0 | ✅ | `conversation_screen_test` |
+| MOB-7 | Agent mode: leads (filter by stage, status changes, activity log), tasks, transactions (milestones, signed document downloads) | P1 | ✅ | `home_screen_test` |
+| MOB-8 | Map search (Mapbox SDK) | P1 | ⛔ | Needs a Mapbox access token; the Map tab says so |
+| MOB-9 | Push notifications (FCM/APNs) | P1 | ⛔ | Needs a Firebase project and APNs key |
+| MOB-10 | Offline cache | P2 | ⏳ | Not built: only data the MLS licences allow may be cached; decide per licence |
+| MOB-11 | Store release (signing, listings, privacy labels) | P1 | ⛔ | Needs developer accounts and legal texts |
+
+Uploads, offers and admin remain web-only for now (the app links to them).
 
 ## Sprint 11 — Admin dashboard & reports
 

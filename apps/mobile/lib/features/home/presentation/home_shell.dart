@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/app_localizations.dart';
+import '../../messages/data/message_repository.dart';
 
 /// Bottom navigation: Home, Search, Map, Favorites, Messages, Profile.
-class HomeShell extends StatelessWidget {
+class HomeShell extends ConsumerWidget {
   const HomeShell({super.key, required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l10n = context.l10n;
+    final unreadMessages = ref.watch(unreadMessagesProvider).value ?? 0;
     return Scaffold(
       body: shell,
       bottomNavigationBar: NavigationBar(
@@ -35,7 +38,11 @@ class HomeShell extends StatelessWidget {
             label: l10n.t('favorites'),
           ),
           NavigationDestination(
-            icon: const Icon(Icons.chat_bubble_outline),
+            icon: Badge(
+              isLabelVisible: unreadMessages > 0,
+              label: Text('$unreadMessages'),
+              child: const Icon(Icons.chat_bubble_outline),
+            ),
             selectedIcon: const Icon(Icons.chat_bubble),
             label: l10n.t('messages'),
           ),

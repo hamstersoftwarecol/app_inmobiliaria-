@@ -17,7 +17,8 @@ final dioProvider = Provider<Dio>((ref) {
       baseUrl: AppConfig.apiV1,
       connectTimeout: AppConfig.connectTimeout,
       receiveTimeout: AppConfig.receiveTimeout,
-      headers: {'Accept': 'application/json'},
+      // `X-Hitlease-Client: mobile` lets the API apply MLS display rules for mobile apps.
+      headers: {'Accept': 'application/json', 'X-Hitlease-Client': 'mobile'},
       responseType: ResponseType.json,
     ),
   );
