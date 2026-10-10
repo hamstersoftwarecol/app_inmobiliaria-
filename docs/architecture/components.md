@@ -1,0 +1,89 @@
+# Component Design
+
+## 1. Component diagram
+
+```mermaid
+flowchart LR
+  subgraph Clients
+    WEB[Next.js web<br/>apps/web]
+    MOB[Flutter app<br/>apps/mobile]
+  end
+
+  subgraph API["Laravel API (apps/api)"]
+    direction TB
+    HTTP[Http layer<br/>Controllers · FormRequests · Resources · Middleware]
+    POL[Policies + Gates<br/>RBAC]
+    APP[Application layer<br/>Identity · Audit · Mls · …]
+    DOM[Domain layer<br/>Enums · Contracts · DTOs · Exceptions]
+    INF[Infrastructure<br/>MLS adapters · Storage · AI · AV scan]
+    JOBS[Jobs / Scheduler]
+  end
+
+  PG[(PostgreSQL 16<br/>+ PostGIS)]
+  RD[(Redis<br/>cache · queues · rate limits)]
+  R2[(Cloudflare R2<br/>media · documents)]
+  MLS[[Authorized MLS providers<br/>RESO Web API]]
+  MAIL[[Mail / Push / SMS providers]]
+
+  WEB -- cookie session + CSRF --> HTTP
+  MOB -- bearer token --> HTTP
+  HTTP --> POL --> APP
+  APP --> DOM
+  INF -. implements .-> DOM
+  APP --> INF
+  JOBS --> APP
+  APP --> PG
+  APP --> RD
+  INF --> R2
+  INF -- licence-gated --> MLS
+  JOBS --> MAIL
+```
+
+## 2. API modules (bounded contexts)
+
+| Module | Status | Responsibilities | Key classes |
+|---|---|---|---|
+| Identity & Access | **Implemented** | Registration, cookie/token auth, MFA, password reset, e-mail verification, sessions, RBAC, user administration | `CredentialVerifier`, `MfaService`, `RegisterUser`, `UserAdministration`, `SessionManager`, `UserPolicy`, `RoleName`, `Permission` |
+| Audit | **Implemented** | Append-only audit trail, secret redaction | `AuditLogger`, `AuditLog` |
+| MLS Integration Engine | **Contract implemented**; sync blocked by external authorization | Provider contract, RESO adapter, normalization, compliance rules, encrypted connections | `MLSProviderInterface`, `RESOWebAPIProvider`, `MLSConnectionManager`, `MLSNormalizationService`, `MLSComplianceService` |
+| Listings / Properties | Planned (Sprint 4) | Internal + MLS listings, media, status history, SEO | — |
+| Search | Planned (Sprint 5) | Filters, bbox/radius/polygon (PostGIS), autocomplete, saved searches, alerts | — |
+| Agency & Agents | Planned (Sprint 7) | Agencies, offices, agents, licences (verification workflow) | — |
+| CRM | Planned (Sprint 7) | Leads, sources, pipeline, activities, tasks, duplicates | — |
+| Scheduling | Planned (Sprint 8) | Showings, availability, open houses, reminders (DST-safe) | — |
+| Transactions | Planned (Sprint 9) | Offers, transactions, milestones, contingencies | — |
+| Documents | Planned (Sprint 9) | Private storage, versions, signed URLs, access logs, AV scan | — |
+| Messaging | Planned (Sprint 8–9) | Conversations, Reverb WebSockets, read receipts | — |
+| Notifications | Partially (auth e-mails) | Mail/push/in-app/SMS, preferences, consent | `ResetPasswordNotification`, `VerifyEmailNotification` |
+| AI assistant | Planned (post-MVP) | NL → structured filters, agent writing aids, guarded by MLS/PII rules | — |
+
+## 3. Request lifecycle (API)
+
+1. `AssignRequestId` → correlation id (`X-Request-Id`) shared with logs and audit entries.
+2. Sanctum `EnsureFrontendRequestsAreStateful` (web origins only) → session + CSRF.
+3. `throttle:*` named limiters (`api`, `auth`, `search`).
+4. `auth:sanctum` → `active` (rejects deactivated accounts) → `mfa.staff` on `/admin`.
+5. FormRequest validation → Policy/Gate authorization → Application service.
+6. API Resource serialization; errors rendered by `ApiErrorRenderer` into the standard envelope.
+7. `SecurityHeaders` on every response.
+
+## 4. Web app structure (apps/web)
+
+| Folder | Content |
+|---|---|
+| `src/app` | Routes (App Router). Public: `/`, `/search`, auth pages. Private: `/dashboard`, `/dashboard/settings`, `/admin/*`. |
+| `src/features/<feature>/components` | Feature UI (auth, account, admin, home). |
+| `src/components/ui` | shadcn/ui-style primitives (Button, Input, Card, Alert, Badge, Skeleton, FormField, EmptyState). |
+| `src/services` | Typed API calls (`auth-service`, `admin-service`). |
+| `src/lib` | `api-client` (CSRF, credentials, error envelope), i18n, utils, env. |
+| `src/hooks`, `src/stores`, `src/validations`, `src/types` | TanStack Query hooks, Zustand stores, Zod schemas, API types. |
+
+Client-side guards (`RequireAuth`) are UX only — the API authorizes every call.
+
+## 5. Mobile app structure (apps/mobile)
+
+| Folder | Content |
+|---|---|
+| `lib/core` | `config` (dart-define), `network` (Dio + interceptor + `ApiException`), `storage` (secure token storage), `router` (GoRouter + auth redirect), `theme`, `l10n`. |
+| `lib/features/<feature>` | `data` (repositories), `domain` (Freezed models), `application` (Riverpod notifiers), `presentation` (screens). |
+| `lib/shared/widgets` | Reusable widgets (`ComingSoon`, `ErrorBanner`). |

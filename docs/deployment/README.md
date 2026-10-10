@@ -1,0 +1,82 @@
+# Deployment & Local Setup
+
+## 1. Environments
+
+| Env | Purpose | Data | MLS |
+|---|---|---|---|
+| development | Local work | Seeded demo accounts (`DevelopmentSeeder`, refuses non-local envs) | Fixture provider only |
+| testing | CI / automated tests | Ephemeral DB per run | Faked HTTP only (`Http::preventStrayRequests`) |
+| staging | Pre-release validation | Anonymized/synthetic | Sandbox connections only |
+| production | Live | Real | Only authorized providers (`MLS_SYNC_ENABLED=true`) |
+
+## 2. Local development without Docker
+
+Requirements: PHP 8.3 (pdo_pgsql, redis, intl, zip, bcmath), Composer 2, Node 22, PostgreSQL 16 +
+PostGIS 3, Redis 7, Flutter 3.47.
+
+```bash
+# Database (once)
+createuser -P hitlease            # choose a local password
+createdb -O hitlease hitlease
+createdb -O hitlease hitlease_test
+psql -d hitlease -c 'CREATE EXTENSION IF NOT EXISTS postgis'
+psql -d hitlease_test -c 'CREATE EXTENSION IF NOT EXISTS postgis'
+
+# API — http://localhost:8000
+cd apps/api
+cp .env.example .env              # set DB_PASSWORD
+composer install
+php artisan key:generate
+php artisan migrate --seed        # prints the demo accounts' password (<role>@hitlease.test)
+php artisan serve
+php artisan queue:work redis --queue=default,notifications   # e-mails (MAIL_MAILER=log locally)
+
+# Web — http://localhost:3000
+cd apps/web && cp .env.example .env.local && npm ci && npm run dev
+
+# Mobile (Android emulator reaches the host as 10.0.2.2)
+cd apps/mobile && flutter pub get && flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
+```
+
+Tests: `php artisan test` (needs `hitlease_test` DB), `npm test`, `npm run test:e2e` (API on :8000),
+`flutter test`.
+
+## 3. Docker Compose
+
+```bash
+cp .env.example .env   # set DB_PASSWORD; APP_KEY via the command below
+docker compose run --rm api php artisan key:generate --show   # paste into APP_KEY
+docker compose up -d --build
+docker compose run --rm api php artisan migrate --force
+docker compose run --rm api php artisan db:seed --class=RolesAndPermissionsSeeder --force
+```
+
+Services: `postgres` (postgis/postgis:16-3.4), `redis`, `api` (PHP-FPM), `queue`, `scheduler`,
+`web` (Next.js standalone), `nginx` (reverse proxy: `api.localhost` → API, everything else → web).
+
+## 4. Production checklist
+
+* `APP_ENV=production`, `APP_DEBUG=false`, strong `APP_KEY` (kept in the secret store; rotating it
+  invalidates encrypted MFA secrets and MLS credentials — plan a re-encryption migration).
+* Same registrable domain for web and API (e.g. `www.example.com` + `api.example.com`):
+  `SESSION_DOMAIN=.example.com`, `SESSION_SECURE_COOKIE=true`,
+  `SANCTUM_STATEFUL_DOMAINS=www.example.com`, `CORS_ALLOWED_ORIGINS=https://www.example.com`,
+  `FRONTEND_URL=https://www.example.com`, `TRUSTED_PROXIES` set to the load balancer/Cloudflare ranges.
+* Database: managed PostgreSQL 16 with PostGIS, TLS (`DB_SSLMODE=require`), least-privilege user,
+  PITR backups + weekly restore test.
+* Redis with auth/TLS; queue workers supervised (Compose `restart`, systemd or the platform);
+  Horizon or queue metrics for monitoring.
+* Migrations run **once per release** from the pipeline (`php artisan migrate --force`) before
+  rolling out new containers; then `db:seed --class=RolesAndPermissionsSeeder --force` (idempotent).
+* Observability: set `SENTRY_LARAVEL_DSN` / OTLP endpoint (integration scheduled for Sprint 12),
+  alerts on 5xx rate, queue backlog, failed jobs, MLS sync staleness.
+* Mail: verified sender domain (SPF, DKIM, DMARC).
+* Mobile: release builds with `--dart-define=API_BASE_URL=https://api.example.com` (HTTPS only).
+
+## 5. CI/CD
+
+* `.github/workflows/ci.yml`: API (Pint, composer audit, migrations up/down/up, PHPUnit on
+  PostGIS), Web (ESLint, tsc, Vitest, build, npm audit), E2E (Playwright against the real API),
+  Mobile (codegen drift, format, analyze, tests, debug APK), OpenAPI lint, Docker builds.
+* `.github/workflows/deploy.yml`: manual, environment-protected; builds and pushes versioned images
+  to GHCR. The rollout step is a documented placeholder until the hosting platform is chosen.
