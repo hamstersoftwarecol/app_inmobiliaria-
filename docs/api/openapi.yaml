@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hitlease Real Estate API
-  version: 1.0.0-alpha.4
+  version: 1.0.0-alpha.5
   summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
   description: |
     Central API consumed by the Next.js web app and the Flutter mobile app.
@@ -60,7 +60,7 @@ tags:
   - name: Admin Agents
     description: Agent profiles and the licence verification workflow.
   - name: CRM
-    description: Planned (Sprint 7).
+    description: Leads, pipeline, activities, tasks and reports (`/crm/*` requires MFA for staff). Public inquiries create leads.
   - name: Appointments
     description: Planned (Sprint 8).
   - name: Transactions
@@ -2039,14 +2039,387 @@ paths:
         "422": { $ref: "#/components/responses/ValidationError" }
 
   # ------------------------------------------------------------------ Planned
+  /inquiries:
+    post:
+      tags: [CRM]
+      operationId: createInquiry
+      summary: Public contact form (listing, agent profile or general)
+      description: |
+        Creates a lead, or adds the inquiry to the person's open lead when the normalized e-mail or phone
+        matches. Listing inquiries go to the listing agent, agent-page inquiries to that agent; otherwise
+        staff with `leads.assign` are notified. The response is identical in every case (including the
+        `website` honeypot) and never reveals whether the person was known. Rate limit: 5/min and 20/h per visitor.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, contact_consent]
+              properties:
+                first_name: { type: string, maxLength: 100 }
+                last_name: { type: [string, "null"], maxLength: 100 }
+                email: { type: [string, "null"], format: email, description: Required without phone }
+                phone: { type: [string, "null"], description: Required without email }
+                message: { type: [string, "null"], maxLength: 2000 }
+                intent: { type: [string, "null"], enum: [buy, rent, sell, other, null] }
+                property_slug: { type: string, description: A publicly visible listing (404 otherwise) }
+                agent_slug: { type: string, description: A publicly listed agent (404 otherwise) }
+                preferred_language: { type: string, enum: [en, es] }
+                contact_consent: { type: boolean, const: true, description: Consent to be contacted about this inquiry (stored with time and IP) }
+                marketing_consent: { type: boolean }
+                website: { type: string, description: "Honeypot: leave empty" }
+      responses:
+        "202": { $ref: "#/components/responses/Message" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /crm/leads:
     get:
       tags: [CRM]
       operationId: listLeads
-      summary: "[Planned] Leads visible to the user"
-      x-status: planned
+      summary: Leads visible to the user (`leads.view_any`, or `leads.view_assigned` for own leads)
+      parameters:
+        - { name: search, in: query, description: "Name, e-mail or phone", schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/LeadStatus" } }
+        - { name: source, in: query, schema: { $ref: "#/components/schemas/LeadSource" } }
+        - { name: assigned, in: query, description: "`me`, `unassigned` or an agent id", schema: { type: string } }
+        - { name: open, in: query, schema: { type: boolean } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
       responses:
-        "200": { $ref: "#/components/responses/Planned" }
+        "200":
+          description: Paginated leads, most recently active first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/Lead" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [CRM]
+      operationId: createLead
+      summary: Enter a lead by hand (`leads.create`); agents without `leads.assign` own what they create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/leads/board:
+    get:
+      tags: [CRM]
+      operationId: leadBoard
+      summary: Kanban columns (totals and the 25 most recently active leads per stage)
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: source, in: query, schema: { $ref: "#/components/schemas/LeadSource" } }
+        - { name: assigned, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: One column per stage, in pipeline order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status: { $ref: "#/components/schemas/LeadStatus" }
+                        total: { type: integer }
+                        leads: { type: array, items: { $ref: "#/components/schemas/Lead" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /crm/leads/{lead}:
+    parameters:
+      - { name: lead, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [CRM]
+      operationId: getLead
+      summary: Lead with timeline, tasks, possible duplicates and the caller's allowed actions
+      responses:
+        "200":
+          description: Lead
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+                  meta:
+                    type: object
+                    properties:
+                      possible_duplicates:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer }
+                            full_name: { type: string }
+                            status: { $ref: "#/components/schemas/LeadStatus" }
+                            created_at: { type: [string, "null"], format: date-time }
+                      can:
+                        type: object
+                        properties:
+                          update: { type: boolean }
+                          assign: { type: boolean }
+                          merge: { type: boolean }
+                          delete: { type: boolean }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [CRM]
+      operationId: updateLead
+      summary: Update contact details (`leads.update_any`, or `leads.update_assigned` for own leads)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [CRM]
+      operationId: deleteLead
+      summary: Soft-delete a lead (`leads.delete`, audited)
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /crm/leads/{lead}/status:
+    parameters:
+      - { name: lead, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [CRM]
+      operationId: setLeadStatus
+      summary: Move the lead to another stage (`lost` requires a reason)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: "#/components/schemas/LeadStatus" }
+                lost_reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/leads/{lead}/assign:
+    parameters:
+      - { name: lead, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [CRM]
+      operationId: assignLead
+      summary: Assign to an active agent or unassign (`leads.assign`, audited, agent notified)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id: { type: [integer, "null"] }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/leads/{lead}/merge:
+    parameters:
+      - { name: lead, in: path, required: true, description: The duplicate to fold in (soft-deleted), schema: { type: integer } }
+    post:
+      tags: [CRM]
+      operationId: mergeLead
+      summary: Merge a duplicate into another lead (`leads.update_any`, audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [into_lead_id]
+              properties:
+                into_lead_id: { type: integer }
+      responses:
+        "200":
+          description: The surviving lead
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/leads/{lead}/activities:
+    parameters:
+      - { name: lead, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [CRM]
+      operationId: logLeadActivity
+      summary: Log a call, e-mail, meeting or note (append-only)
+      description: The first logged call/e-mail/meeting sets `first_contacted_at` and moves a `new` lead to `contacted`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, enum: [note, call, email, meeting] }
+                body: { type: string, maxLength: 5000, description: Required for notes }
+                occurred_at: { type: string, format: date-time, description: Not in the future; defaults to now }
+      responses:
+        "201":
+          description: Logged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/LeadActivity" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /crm/tasks:
+    get:
+      tags: [CRM]
+      operationId: listCrmTasks
+      summary: Own tasks (or everyone's with `scope=all` and `leads.assign`)
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [open, overdue, completed], default: open } }
+        - { name: scope, in: query, schema: { type: string, enum: [mine, all], default: mine } }
+        - { name: lead_id, in: query, schema: { type: integer } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Tasks, soonest due first (completed ones most recent first)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/CrmTask" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [CRM]
+      operationId: createCrmTask
+      summary: Create a task (for others only with `leads.assign`); reminders go out 15 minutes before due
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmTaskInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CrmTask" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/tasks/{task}:
+    parameters:
+      - { name: task, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [CRM]
+      operationId: updateCrmTask
+      summary: Edit, reschedule (re-arms the reminder) or complete a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmTaskInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CrmTask" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [CRM]
+      operationId: deleteCrmTask
+      summary: Delete a task
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /crm/reports/summary:
+    get:
+      tags: [CRM]
+      operationId: crmSummary
+      summary: Pipeline figures for leads created in a period (`reports.view` + `leads.view_any`)
+      parameters:
+        - { name: from, in: query, description: "Agency calendar day (default 30 days before `to`)", schema: { type: string, format: date } }
+        - { name: to, in: query, description: "Agency calendar day (default today); max range one year", schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CrmSummary" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   /appointments:
     get:
       tags: [Appointments]
@@ -2689,6 +3062,139 @@ components:
                   source: { type: string }
                   changed_at: { type: string, format: date-time }
 
+    LeadStatus:
+      type: string
+      enum: [new, contacted, qualified, showing, negotiating, won, lost]
+    LeadSource:
+      type: string
+      enum: [website_listing, website_agent, website_contact, phone, email, walk_in, referral, social, other]
+    LeadInput:
+      type: object
+      properties:
+        first_name: { type: string, maxLength: 100 }
+        last_name: { type: [string, "null"] }
+        email: { type: [string, "null"], format: email }
+        phone: { type: [string, "null"] }
+        source: { type: string, enum: [phone, email, walk_in, referral, social, other], description: Create only }
+        intent: { type: [string, "null"], enum: [buy, rent, sell, other, null] }
+        message: { type: [string, "null"] }
+        property_id: { type: [integer, "null"] }
+        budget_min: { type: [number, "null"] }
+        budget_max: { type: [number, "null"] }
+        preferred_language: { type: [string, "null"], enum: [en, es, null] }
+        contact_consent: { type: boolean, description: Create only }
+        assigned_agent_id: { type: [integer, "null"], description: Create only; ignored unless the caller has `leads.assign` }
+    Lead:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { $ref: "#/components/schemas/LeadStatus" }
+        source: { $ref: "#/components/schemas/LeadSource" }
+        intent: { type: [string, "null"] }
+        first_name: { type: string }
+        last_name: { type: [string, "null"] }
+        full_name: { type: string }
+        email: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        message: { type: [string, "null"] }
+        budget_min: { type: [number, "null"] }
+        budget_max: { type: [number, "null"] }
+        preferred_language: { type: [string, "null"] }
+        contact_consent: { type: boolean }
+        marketing_consent: { type: boolean }
+        consent_at: { type: [string, "null"], format: date-time }
+        lost_reason: { type: [string, "null"] }
+        assigned_agent:
+          oneOf:
+            - type: object
+              properties:
+                id: { type: integer }
+                full_name: { type: [string, "null"] }
+                user_id: { type: integer }
+            - type: "null"
+        property:
+          oneOf:
+            - type: object
+              properties:
+                id: { type: integer }
+                slug: { type: string }
+                title: { type: string }
+            - type: "null"
+        assigned_at: { type: [string, "null"], format: date-time }
+        first_contacted_at: { type: [string, "null"], format: date-time }
+        last_activity_at: { type: [string, "null"], format: date-time }
+        closed_at: { type: [string, "null"], format: date-time }
+        created_at: { type: [string, "null"], format: date-time }
+        activities: { type: array, items: { $ref: "#/components/schemas/LeadActivity" } }
+        tasks: { type: array, items: { $ref: "#/components/schemas/CrmTask" } }
+    LeadActivity:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [note, call, email, meeting, inquiry, status_change, assignment, merge] }
+        body: { type: [string, "null"] }
+        metadata: { type: [object, "null"] }
+        user:
+          oneOf:
+            - type: object
+              properties:
+                id: { type: integer }
+                full_name: { type: string }
+            - type: "null"
+        occurred_at: { type: string, format: date-time }
+    CrmTaskInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 2, maxLength: 200 }
+        notes: { type: [string, "null"] }
+        due_at: { type: string, format: date-time }
+        lead_id: { type: [integer, "null"], description: Create only }
+        assigned_to: { type: integer, description: Another user requires `leads.assign` }
+        completed: { type: boolean }
+    CrmTask:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        notes: { type: [string, "null"] }
+        due_at: { type: string, format: date-time }
+        completed_at: { type: [string, "null"], format: date-time }
+        is_overdue: { type: boolean }
+        lead:
+          oneOf:
+            - type: object
+              properties:
+                id: { type: integer }
+                full_name: { type: string }
+            - type: "null"
+        assignee:
+          type: object
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+        created_at: { type: [string, "null"], format: date-time }
+    CrmSummary:
+      type: object
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        total: { type: integer }
+        won: { type: integer }
+        conversion_rate: { type: [number, "null"] }
+        unassigned_open: { type: integer }
+        median_first_response_minutes: { type: [number, "null"] }
+        by_status: { type: object, additionalProperties: { type: integer } }
+        by_source: { type: object, additionalProperties: { type: integer } }
+        by_agent:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_id: { type: integer }
+              full_name: { type: string }
+              assigned: { type: integer }
+              won: { type: integer }
+              median_response_minutes: { type: [number, "null"] }
     Amenity:
       type: string
       enum: [pool, garage, basement, fireplace, central_air, laundry_in_unit, elevator, doorman, gym, balcony, patio, deck, waterfront, pets_allowed, ev_charging, solar, accessible]

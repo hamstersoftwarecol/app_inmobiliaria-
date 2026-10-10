@@ -177,9 +177,16 @@ expiry) is deferred until the first agreement exists.
   `(license_state, upper(license_number))` for pending/verified). A typed licence number is never
   treated as verified.
 * ✅ `notifications` (Laravel database notifications, jsonb data).
-* `lead_sources`, `leads` (assigned agent, status, budget range, preferences jsonb, dedup keys on
-  normalized email/phone), `lead_assignments`, `lead_activities` (call/email/note/task),
-  `crm_pipelines`, `crm_stages`, `tasks`.
+* ✅ `leads` (agency, `assigned_agent_id`, property, `created_by`; `status`
+  new|contacted|qualified|showing|negotiating|won|lost, `source`, `intent`; contact fields plus
+  normalized `email_key` / `phone_key` (indexed, duplicate detection); budget range with a CHECK
+  constraint; `contact_consent`, `marketing_consent`, `consent_at`, `consent_ip`; `lost_reason`,
+  `assigned_at`, `first_contacted_at`, `last_activity_at`, `closed_at`; soft deletes).
+* ✅ `lead_activities` (append-only timeline: note/call/email/meeting by people;
+  inquiry/status_change/assignment/merge by the system; `metadata` jsonb, `occurred_at`).
+* ✅ `crm_tasks` (optional lead, `assigned_to`, `created_by`, `due_at`, `completed_at`,
+  `reminder_sent_at`; partial index for pending reminders).
+* 🗓️ Configurable `crm_pipelines` / `crm_stages` (stages are a fixed enum for now).
 * `appointments` (`starts_at`/`ends_at` timestamptz + `timezone`, status, **exclusion constraint**
   `EXCLUDE USING gist (agent_id WITH =, tstzrange(starts_at, ends_at) WITH &&) WHERE status in
   (requested, confirmed)` to prevent double-booking), `agent_availability`.

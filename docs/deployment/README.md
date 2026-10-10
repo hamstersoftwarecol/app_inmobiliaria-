@@ -81,6 +81,7 @@ the `api-media` volume (`MEDIA_DISK=public`) and nginx serves them read-only und
   agent licences daily at 00:15 America/New_York (`hitlease:licenses:expire`), queues due MLS syncs
   every 5 minutes (`hitlease:mls:sync-due`) and a nightly reconcile at 03:30 America/New_York.
   These MLS commands do nothing until `MLS_SYNC_ENABLED=true` and a provider is authorized.
+  CRM task reminders run every 5 minutes (`hitlease:crm:task-reminders`).
   Saved-search alerts run daily at 07:45 and weekly on Mondays at 07:50 America/New_York
   (`hitlease:saved-searches:alert --frequency=daily|weekly`).
 * Set the same random `API_SSR_KEY` (`openssl rand -hex 32`) on the API and the web server so

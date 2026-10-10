@@ -352,3 +352,76 @@ export interface AuditLogEntry {
   request_id: string | null;
   created_at: string;
 }
+
+export type LeadStatus = "new" | "contacted" | "qualified" | "showing" | "negotiating" | "won" | "lost";
+export type LeadSource = "website_listing" | "website_agent" | "website_contact" | "phone" | "email" | "walk_in" | "referral" | "social" | "other";
+export type LeadIntent = "buy" | "rent" | "sell" | "other";
+export type ActivityType = "note" | "call" | "email" | "meeting" | "inquiry" | "status_change" | "assignment" | "merge";
+
+export interface LeadActivity {
+  id: number;
+  type: ActivityType;
+  body: string | null;
+  metadata: Record<string, unknown> | null;
+  user: { id: number; full_name: string } | null;
+  occurred_at: string;
+}
+
+export interface CrmTask {
+  id: number;
+  title: string;
+  notes: string | null;
+  due_at: string;
+  completed_at: string | null;
+  is_overdue: boolean;
+  lead?: { id: number; full_name: string } | null;
+  assignee?: { id: number; full_name: string };
+  created_at: string | null;
+}
+
+export interface Lead {
+  id: number;
+  status: LeadStatus;
+  source: LeadSource;
+  intent: LeadIntent | null;
+  first_name: string;
+  last_name: string | null;
+  full_name: string;
+  email: string | null;
+  phone: string | null;
+  message: string | null;
+  budget_min: number | null;
+  budget_max: number | null;
+  preferred_language: "en" | "es" | null;
+  contact_consent: boolean;
+  marketing_consent: boolean;
+  consent_at: string | null;
+  lost_reason: string | null;
+  assigned_agent?: { id: number; full_name: string | null; user_id: number } | null;
+  property?: { id: number; slug: string; title: string } | null;
+  assigned_at: string | null;
+  first_contacted_at: string | null;
+  last_activity_at: string | null;
+  closed_at: string | null;
+  created_at: string | null;
+  activities?: LeadActivity[];
+  tasks?: CrmTask[];
+}
+
+export interface LeadDetailMeta {
+  possible_duplicates: { id: number; full_name: string; status: LeadStatus; created_at: string | null }[];
+  can: { update: boolean; assign: boolean; merge: boolean; delete: boolean };
+}
+
+export interface CrmSummary {
+  from: string;
+  to: string;
+  total: number;
+  won: number;
+  conversion_rate: number | null;
+  unassigned_open: number;
+  median_first_response_minutes: number | null;
+  by_status: Record<LeadStatus, number>;
+  by_source: Partial<Record<LeadSource, number>>;
+  by_agent: { agent_id: number; full_name: string; assigned: number; won: number; median_response_minutes: number | null }[];
+}

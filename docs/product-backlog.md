@@ -66,10 +66,19 @@ dependency (not counted as done).
 | MAP-1 | Mapbox GL map: price markers, clustering, search-as-you-move, draw polygon | P0 | ⛔ | Needs a Mapbox access token; the API side (bbox/polygon) is ready |
 | SRC-6 | `property_views` analytics | P2 | ⏳ | Sprint 11 (reports) |
 
-## Sprint 7 — CRM
+## Sprint 7 — CRM (delivered; numbered after the Sprint 5–6 plan, which was merged into Sprint 4)
 
-Leads (sources, assignment, duplicates), Kanban pipeline, activities (calls, e-mails, notes),
-tasks & reminders, reports. Policies: `leads.view_assigned` vs `leads.view_any`.
+| ID | Item | Pri | Status | Evidence |
+|---|---|---|---|---|
+| CRM-1 | Public inquiries (listing, agent page, general) with consent capture, honeypot, rate limit, auto-assignment to the listing/profile agent, open-lead dedup | P0 | ✅ | `LeadPipelineTest`, contact forms, E2E `crm.spec.ts` |
+| CRM-2 | Leads: visibility (`view_any` / `view_assigned`), manual entry, edit, stages with lost reason, assignment (audited, notified), merge duplicates, soft delete (`leads.delete`, audited) | P0 | ✅ | `LeadPipelineTest`, `/dashboard/crm` |
+| CRM-3 | Kanban board and list with filters; accessible "move to" control instead of drag-only | P0 | ✅ | `/dashboard/crm` |
+| CRM-4 | Append-only timeline (calls, e-mails, meetings, notes + system events); first-contact tracking | P0 | ✅ | `LeadPipelineTest` |
+| CRM-5 | Tasks with due dates and reminders (15 min before, once per due time) | P1 | ✅ | `TasksAndReportsTest`, `/dashboard/crm/tasks` |
+| CRM-6 | Reports: totals, conversion, median first response, by stage/source/agent (agency days) | P1 | ✅ | `TasksAndReportsTest`, `/dashboard/crm/reports` |
+| CRM-7 | Configurable pipelines/stages per agency | P2 | ⏳ | Fixed stages for now (`LeadStatus`) |
+| CRM-8 | Data-subject requests (export/erase a lead's personal data) and retention schedule | P1 | ⏳ | Needs the agency's privacy policy |
+| CRM-9 | Mobile CRM (agent mode) | P1 | ⏳ | Sprint 10 |
 
 ## Sprint 8 — Showings & notifications
 

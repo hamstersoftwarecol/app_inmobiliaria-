@@ -48,6 +48,12 @@ class AppServiceProvider extends ServiceProvider
             Limit::perHour(100)->by('auth-ip-hour:'.$request->ip()),
         ]);
 
+        // Public contact forms: per visitor (see clientKey), generous enough for real people.
+        RateLimiter::for('inquiries', fn (Request $request) => [
+            Limit::perMinute(5)->by('inquiry:'.self::clientKey($request)),
+            Limit::perHour(20)->by('inquiry-hour:'.self::clientKey($request)),
+        ]);
+
         RateLimiter::for('search', fn (Request $request) => Limit::perMinute(60)->by('search:'.($request->user()?->id ?: self::clientKey($request))));
     }
 

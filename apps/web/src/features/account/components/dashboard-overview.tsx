@@ -7,12 +7,13 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RequireAuth } from "@/features/auth/components/require-auth";
+import { canUseCrm } from "@/features/crm/components/crm-shell";
 import { canManageListings } from "@/features/properties/components/manage-listings";
 import { useTranslation } from "@/hooks/use-translation";
 import { authService } from "@/services/auth-service";
 import type { User } from "@/types/api";
 
-const MODULES = ["leads", "appointments", "transactions", "documents", "messages"] as const;
+const MODULES = ["appointments", "transactions", "documents", "messages"] as const;
 
 function Overview({ user }: { user: User }) {
   const { t } = useTranslation();
@@ -31,6 +32,11 @@ function Overview({ user }: { user: User }) {
           {user.permissions?.includes("saved_searches.manage") && (
             <Link href="/dashboard/saved-searches" className={buttonVariants({ variant: "outline" })}>
               {t("nav.savedSearches")}
+            </Link>
+          )}
+          {canUseCrm(user) && (
+            <Link href="/dashboard/crm" className={buttonVariants({ variant: "outline" })}>
+              {t("nav.crm")}
             </Link>
           )}
           {canManageListings(user) && (

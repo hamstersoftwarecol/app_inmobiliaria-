@@ -28,3 +28,6 @@ Schedule::command('hitlease:saved-searches:alert --frequency=weekly')
     ->timezone(config('hitlease.agency_timezone'))
     ->withoutOverlapping()
     ->onOneServer();
+
+// CRM: task reminders shortly before each due time.
+Schedule::command('hitlease:crm:task-reminders')->everyFiveMinutes()->withoutOverlapping()->onOneServer();

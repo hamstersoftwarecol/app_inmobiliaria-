@@ -7,6 +7,8 @@ use App\Domain\Identity\Enums\RoleName;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\AgentLicense;
+use App\Models\CrmTask;
+use App\Models\Lead;
 use App\Models\Office;
 use App\Models\Property;
 use App\Models\PropertyMedia;
@@ -49,6 +51,9 @@ class E2ESeeder extends Seeder
         $buyer = $user('e2e.buyer@example.com', 'Bianca', 'Buyer', RoleName::Buyer);
         $buyer->favoriteProperties()->detach();
         $buyer->savedSearches()->delete();
+        // Leads and tasks created by earlier runs (contact form + CRM flows).
+        Lead::withTrashed()->where('email_key', 'like', 'e2e.lead.%@example.com')->forceDelete();
+        CrmTask::query()->where('title', 'like', 'E2E %')->delete();
         // Users created through the admin UI by earlier runs.
         User::withTrashed()->where('email', 'like', 'e2e.created.%@example.com')->forceDelete();
 

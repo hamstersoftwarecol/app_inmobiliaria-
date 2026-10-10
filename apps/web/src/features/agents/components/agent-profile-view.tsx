@@ -3,6 +3,7 @@
 import { BadgeCheck, Mail, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { ContactForm } from "@/features/crm/components/contact-form";
 import { useTranslation } from "@/hooks/use-translation";
 import { languageName } from "@/lib/agent-options";
 import type { PublicAgent } from "@/types/api";
@@ -93,6 +94,9 @@ export function AgentProfileView({ agent }: { agent: PublicAgent }) {
               </p>
             </div>
           )}
+          <div className="border-t border-border pt-4">
+            <ContactForm agentSlug={agent.slug} title={t("contact.agentTitle")} />
+          </div>
         </aside>
       </div>
     </div>

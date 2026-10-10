@@ -49,7 +49,7 @@ flowchart LR
 | Listings / Properties | **Implemented** (Sprint 3) | Internal + MLS listings, publication workflow, photos, status/price history, public SEO pages | `PropertyService`, `PropertyMediaService`, `PropertyPolicy`, `PublicPropertyResource` |
 | Search | **Implemented** (Sprint 4); map UI blocked (Mapbox token) | Filters, bbox/radius/polygon (PostGIS), autocomplete, favorites, saved searches, alerts | `PropertySearch`, `SavedSearchAlerts`, `FavoriteController`, `SavedSearchController` |
 | Agency & Agents | **Implemented** (Sprint 2) | Agencies, offices (PostGIS), agent profiles, public directory, licence verification workflow + daily expiry | `AgentProfileService`, `LicenseVerificationService`, `AgentPolicy`, `AgentLicensePolicy`, `LicenseStatus` |
-| CRM | Planned (Sprint 7) | Leads, sources, pipeline, activities, tasks, duplicates | — |
+| CRM | **Implemented** (Sprint 7) | Inquiries, leads, pipeline, timeline, tasks and reminders, duplicates/merge, reports | `LeadService`, `LeadPolicy`, `CrmTaskPolicy`, `CrmReports`, `SendCrmTaskReminders` |
 | Scheduling | Planned (Sprint 8) | Showings, availability, open houses, reminders (DST-safe) | — |
 | Transactions | Planned (Sprint 9) | Offers, transactions, milestones, contingencies | — |
 | Documents | Planned (Sprint 9) | Private storage, versions, signed URLs, access logs, AV scan | — |

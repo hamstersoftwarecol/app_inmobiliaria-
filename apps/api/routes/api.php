@@ -15,11 +15,16 @@ use App\Http\Controllers\Api\V1\Auth\MfaController;
 use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\ProfileController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
+use App\Http\Controllers\Api\V1\Crm\LeadActivityController;
+use App\Http\Controllers\Api\V1\Crm\LeadController;
+use App\Http\Controllers\Api\V1\Crm\ReportController;
+use App\Http\Controllers\Api\V1\Crm\TaskController;
 use App\Http\Controllers\Api\V1\Manage\PropertyController as ManagePropertyController;
 use App\Http\Controllers\Api\V1\Me\AgentProfileController;
 use App\Http\Controllers\Api\V1\Me\FavoriteController;
 use App\Http\Controllers\Api\V1\Me\SavedSearchController;
 use App\Http\Controllers\Api\V1\Public\AgentDirectoryController;
+use App\Http\Controllers\Api\V1\Public\InquiryController;
 use App\Http\Controllers\Api\V1\Public\PropertyController;
 use Illuminate\Support\Facades\Route;
 
@@ -42,6 +47,29 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
     });
     Route::get('/properties/{slug}', [PropertyController::class, 'show'])
         ->where('slug', '[a-z0-9-]+')->name('properties.show');
+
+    Route::post('/inquiries', [InquiryController::class, 'store'])->middleware('throttle:inquiries')->name('inquiries.store');
+
+    // ---------------------------------------------------------------- CRM (staff & agents; staff need MFA)
+    Route::prefix('crm')->name('crm.')->middleware(['auth:sanctum', 'active', 'mfa.staff'])->group(function () {
+        Route::get('/leads', [LeadController::class, 'index'])->name('leads.index');
+        Route::get('/leads/board', [LeadController::class, 'board'])->name('leads.board');
+        Route::post('/leads', [LeadController::class, 'store'])->name('leads.store');
+        Route::get('/leads/{lead}', [LeadController::class, 'show'])->whereNumber('lead')->name('leads.show');
+        Route::patch('/leads/{lead}', [LeadController::class, 'update'])->whereNumber('lead')->name('leads.update');
+        Route::delete('/leads/{lead}', [LeadController::class, 'destroy'])->whereNumber('lead')->name('leads.destroy');
+        Route::post('/leads/{lead}/status', [LeadController::class, 'status'])->whereNumber('lead')->name('leads.status');
+        Route::post('/leads/{lead}/assign', [LeadController::class, 'assign'])->whereNumber('lead')->name('leads.assign');
+        Route::post('/leads/{lead}/merge', [LeadController::class, 'merge'])->whereNumber('lead')->name('leads.merge');
+        Route::post('/leads/{lead}/activities', [LeadActivityController::class, 'store'])->whereNumber('lead')->name('leads.activities.store');
+
+        Route::get('/tasks', [TaskController::class, 'index'])->name('tasks.index');
+        Route::post('/tasks', [TaskController::class, 'store'])->name('tasks.store');
+        Route::patch('/tasks/{task}', [TaskController::class, 'update'])->whereNumber('task')->name('tasks.update');
+        Route::delete('/tasks/{task}', [TaskController::class, 'destroy'])->whereNumber('task')->name('tasks.destroy');
+
+        Route::get('/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
+    });
 
     // ---------------------------------------------------------------- Listing management (staff & agents)
     Route::prefix('manage')->name('manage.')->middleware(['auth:sanctum', 'active'])->group(function () {

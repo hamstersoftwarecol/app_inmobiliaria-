@@ -47,6 +47,7 @@ enum Permission: string
     case LeadsUpdateAny = 'leads.update_any';
     case LeadsUpdateAssigned = 'leads.update_assigned';
     case LeadsAssign = 'leads.assign';
+    case LeadsDelete = 'leads.delete';
 
     // Showings
     case AppointmentsViewAny = 'appointments.view_any';

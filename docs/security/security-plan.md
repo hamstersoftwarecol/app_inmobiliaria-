@@ -16,7 +16,7 @@ before claiming compliance with any regulation.
 | | Password reset: non-enumerating responses, expiring tokens, all sessions/tokens revoked after reset | `PasswordController` |
 | | Signed, expiring e-mail verification links | `VerifyEmailNotification` |
 | Session management | List/revoke browser sessions and tokens; revoke others on password change; deactivation revokes everything; `active` middleware blocks deactivated accounts holding old credentials | `SessionManager`, `EnsureUserIsActive` |
-| Authorization | RBAC (6 roles, 49 permissions) + Policies; super-admin bypass is explicit; role hierarchy prevents escalation and peer management; checks always server-side | `RoleName`, `Permission`, `UserPolicy`, `UserAdministration` |
+| Authorization | RBAC (6 roles, 50 permissions) + Policies; super-admin bypass is explicit; role hierarchy prevents escalation and peer management; checks always server-side | `RoleName`, `Permission`, `UserPolicy`, `UserAdministration` |
 | Input validation | FormRequests on every write; enums/whitelists for sort and filters; e-mail normalization | `app/Http/Requests` |
 | Output / errors | Uniform error envelope, no stack traces outside debug; request id for support | `ApiErrorRenderer` |
 | Transport & headers | HSTS (when HTTPS), CSP, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy (API and web) | `SecurityHeaders`, `apps/web/next.config.ts` |
@@ -47,6 +47,7 @@ Source of truth: `App\Domain\Identity\Enums\RoleName::defaultPermissions()`.
 | mls.view / mls.manage / mls.sync | ✔ | view | – | – | – | – |
 | leads.view_any / update_any / assign | ✔ | ✔ | ✔ | – | – | – |
 | leads.view_assigned / update_assigned / create | ✔ | ✔ | create | ✔ | – | – |
+| leads.delete | ✔ | ✔ | – | – | – | – |
 | appointments.view_any / manage_any | ✔ | ✔ | ✔ | – | – | – |
 | appointments.manage_own | ✔ | ✔ | – | ✔ | – | – |
 | appointments.request | ✔ | ✔ | – | – | – | ✔ |
@@ -111,6 +112,20 @@ defaults when a role is first created; the super admin role always gets everythi
   secret matches (constant-time comparison), so browsers cannot spoof it. The secret is server-only.
 * Admin user screens offer only roles below the operator's level; the API remains the authority
   (hierarchy guards). Audit-log date filters use agency calendar days.
+
+### CRM and personal data (Sprint 7)
+
+* Leads hold personal data: they are never returned by public endpoints, `/crm/*` requires MFA for
+  staff, agents see and edit only leads assigned to their own profile, and merges/deletions and
+  assignments are audited. Assignment e-mails contain the lead's name and a link only.
+* Public inquiries require explicit consent to be contacted (stored with time and IP), keep
+  marketing consent separate and optional, use a honeypot and per-visitor rate limits (5/min,
+  20/h), and answer identically whether or not the person was already known.
+* The timeline is append-only (model-level guard), so contact history cannot be rewritten.
+* Pending: data-subject export/erasure and a retention schedule (CRM-8), once the agency's privacy
+  policy is defined.
+* New permissions are granted automatically to roles whose defaults include them when a release
+  introduces them; existing customizations are preserved.
 
 ## 3. Planned controls (by sprint)
 
