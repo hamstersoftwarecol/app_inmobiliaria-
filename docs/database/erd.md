@@ -156,11 +156,19 @@ documents, scope, expiry) arrives with Phase 4.
   `geography(MultiPolygon)` for polygon search).
 * `favorites`, `saved_searches` (filters jsonb + optional polygon), `property_views`.
 
-## 4. Agency, CRM, scheduling 🗓️
+## 4. Agency ✅ · CRM and scheduling 🗓️
 
-* `agencies`, `offices` (location point), `agents` (user_id FK unique, office, bio, languages jsonb,
-  specialties jsonb), `agent_licenses` (number, state, status, `verified_at`, `verified_by`,
-  `verification_source`) — a typed licence number is never treated as verified.
+* ✅ `agencies` (slug, brokerage licence as entered, timezone, settings jsonb, soft deletes).
+* ✅ `offices` (agency FK, address, `latitude`/`longitude` + **generated** `location geography(Point,4326)`
+  with GiST index, partial unique index: one headquarters per agency, soft deletes).
+* ✅ `agents` (user_id unique FK, agency FK, office FK nullOnDelete, slug unique, public contact,
+  bio/bio_es, languages/specialties jsonb, status, `is_public`, soft deletes).
+* ✅ `agent_licenses` (number, state, type, status `pending_verification|verified|rejected|expired|revoked`,
+  issued/expires dates, `submitted_by`, `verified_by`, `verified_at`, `verification_source`,
+  `verification_reference`, notes, `status_changed_by/at`, `status_reason`; partial unique index on
+  `(license_state, upper(license_number))` for pending/verified). A typed licence number is never
+  treated as verified.
+* ✅ `notifications` (Laravel database notifications, jsonb data).
 * `lead_sources`, `leads` (assigned agent, status, budget range, preferences jsonb, dedup keys on
   normalized email/phone), `lead_assignments`, `lead_activities` (call/email/note/task),
   `crm_pipelines`, `crm_stages`, `tasks`.

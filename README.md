@@ -14,8 +14,8 @@ central REST API.
 
 **Done and tested:** architecture & docs, monorepo, Docker/Compose, CI; authentication (cookie for
 web, tokens for mobile), TOTP MFA with recovery codes, password reset, e-mail verification,
-session management, brute-force protection; RBAC (6 roles, 47 permissions, hierarchy guards);
-audit log; admin API for users/roles/audit/MLS providers; MLS engine contract with a RESO Web API
+session management, brute-force protection; RBAC (6 roles, 49 permissions, hierarchy guards);
+audit log; admin API for users/roles/audit/MLS providers; agencies, offices, agent profiles, public agent directory and licence verification workflow (Sprint 2); MLS engine contract with a RESO Web API
 adapter, normalization and compliance rules; web and mobile auth flows.
 
 **Blocked by external authorization:** real MLS connections (no licences/specs/credentials yet).

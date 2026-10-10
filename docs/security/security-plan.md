@@ -16,7 +16,7 @@ before claiming compliance with any regulation.
 | | Password reset: non-enumerating responses, expiring tokens, all sessions/tokens revoked after reset | `PasswordController` |
 | | Signed, expiring e-mail verification links | `VerifyEmailNotification` |
 | Session management | List/revoke browser sessions and tokens; revoke others on password change; deactivation revokes everything; `active` middleware blocks deactivated accounts holding old credentials | `SessionManager`, `EnsureUserIsActive` |
-| Authorization | RBAC (6 roles, 47 permissions) + Policies; super-admin bypass is explicit; role hierarchy prevents escalation and peer management; checks always server-side | `RoleName`, `Permission`, `UserPolicy`, `UserAdministration` |
+| Authorization | RBAC (6 roles, 49 permissions) + Policies; super-admin bypass is explicit; role hierarchy prevents escalation and peer management; checks always server-side | `RoleName`, `Permission`, `UserPolicy`, `UserAdministration` |
 | Input validation | FormRequests on every write; enums/whitelists for sort and filters; e-mail normalization | `app/Http/Requests` |
 | Output / errors | Uniform error envelope, no stack traces outside debug; request id for support | `ApiErrorRenderer` |
 | Transport & headers | HSTS (when HTTPS), CSP, X-Frame-Options DENY, nosniff, Referrer-Policy, Permissions-Policy (API and web) | `SecurityHeaders`, `apps/web/next.config.ts` |
@@ -38,7 +38,9 @@ Source of truth: `App\Domain\Identity\Enums\RoleName::defaultPermissions()`.
 | roles.view / roles.manage | ✔ / ✔ | ✔ / – | – | – | – | – |
 | audit_logs.view | ✔ | ✔ | – | – | – | – |
 | settings.manage | ✔ | – | – | – | – | – |
-| agency.manage, agents.* | ✔ | ✔ | agents.view_any | – | – | – |
+| agency.manage, agents.view_any, agents.manage | ✔ | ✔ | agents.view_any | – | – | – |
+| agents.verify_licenses (never on own licence) | ✔ | ✔ | – | – | – | – |
+| agents.manage_own_profile | ✔ | ✔ | – | ✔ | – | – |
 | properties.view_any / update_any / delete / publish | ✔ | ✔ | view_any | – | – | – |
 | properties.create / update_own | ✔ | ✔ | – | ✔ | – | – |
 | seller.listings.view | ✔ | ✔ | – | – | ✔ | – |
@@ -65,6 +67,18 @@ users strictly below it; nobody manages themselves through the admin API.
 
 Permission edits by super admins are preserved across deployments (the seeder only applies
 defaults when a role is first created; the super admin role always gets everything).
+
+### Licence verification controls (Sprint 2)
+
+* Licence numbers typed by agents or staff are stored as `pending_verification`; nothing is public
+  until a verifier records the **source** (state licensee lookup, document review, regulator
+  confirmation), a **reference** and the **expiration date**.
+* Separation of duties: nobody (super admins included) can verify, reject or revoke their own
+  licence; transitions run under a row lock and follow a fixed state machine.
+* A partial unique index allows one active (pending/verified) record per licence number and state.
+* A daily job (00:15 America/New_York) expires licences; expired ones are hidden from the public
+  directory immediately by date even before the job runs.
+* Every transition is audited and notified to the agent (mail + in-app).
 
 ## 3. Planned controls (by sprint)
 

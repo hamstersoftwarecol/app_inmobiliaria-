@@ -142,6 +142,7 @@ jobs:
           echo "MAIL_MAILER=log" >> .env
           php artisan key:generate
           php artisan migrate --force --seed
+          php artisan db:seed --class=E2ESeeder --force
           php artisan serve --port=8000 > /tmp/api.log 2>&1 &
       - name: Build and test web
         working-directory: apps/web

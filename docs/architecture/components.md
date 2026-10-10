@@ -48,7 +48,7 @@ flowchart LR
 | MLS Integration Engine | **Contract implemented**; sync blocked by external authorization | Provider contract, RESO adapter, normalization, compliance rules, encrypted connections | `MLSProviderInterface`, `RESOWebAPIProvider`, `MLSConnectionManager`, `MLSNormalizationService`, `MLSComplianceService` |
 | Listings / Properties | Planned (Sprint 4) | Internal + MLS listings, media, status history, SEO | — |
 | Search | Planned (Sprint 5) | Filters, bbox/radius/polygon (PostGIS), autocomplete, saved searches, alerts | — |
-| Agency & Agents | Planned (Sprint 7) | Agencies, offices, agents, licences (verification workflow) | — |
+| Agency & Agents | **Implemented** (Sprint 2) | Agencies, offices (PostGIS), agent profiles, public directory, licence verification workflow + daily expiry | `AgentProfileService`, `LicenseVerificationService`, `AgentPolicy`, `AgentLicensePolicy`, `LicenseStatus` |
 | CRM | Planned (Sprint 7) | Leads, sources, pipeline, activities, tasks, duplicates | — |
 | Scheduling | Planned (Sprint 8) | Showings, availability, open houses, reminders (DST-safe) | — |
 | Transactions | Planned (Sprint 9) | Offers, transactions, milestones, contingencies | — |

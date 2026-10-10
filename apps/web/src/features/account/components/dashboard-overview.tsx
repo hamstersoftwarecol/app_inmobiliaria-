@@ -21,9 +21,16 @@ function Overview({ user }: { user: User }) {
     <div className="mx-auto max-w-5xl space-y-6 px-4 py-10 sm:px-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-brand-800">{t("dashboard.welcome", { name: user.first_name })}</h1>
-        <Link href="/dashboard/settings" className={buttonVariants({ variant: "outline" })}>
-          {t("nav.settings")}
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          {user.permissions?.includes("agents.manage_own_profile") && (
+            <Link href="/dashboard/agent-profile" className={buttonVariants({ variant: "outline" })}>
+              {t("nav.agentProfile")}
+            </Link>
+          )}
+          <Link href="/dashboard/settings" className={buttonVariants({ variant: "outline" })}>
+            {t("nav.settings")}
+          </Link>
+        </div>
       </div>
 
       {!user.email_verified && (

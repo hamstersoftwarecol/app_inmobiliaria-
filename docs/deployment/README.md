@@ -38,8 +38,9 @@ cd apps/web && cp .env.example .env.local && npm ci && npm run dev
 cd apps/mobile && flutter pub get && flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```
 
-Tests: `php artisan test` (needs `hitlease_test` DB), `npm test`, `npm run test:e2e` (API on :8000),
-`flutter test`.
+Tests: `php artisan test` (needs `hitlease_test` DB), `npm test`, `flutter test`.
+E2E: `php artisan db:seed --class=E2ESeeder` (fictitious data; refuses non-local envs), API on :8000,
+then `npm run build && npm run test:e2e`. The broker test mutates the seed — re-seed before re-running.
 
 ## 3. Docker Compose
 
@@ -68,6 +69,8 @@ Services: `postgres` (postgis/postgis:16-3.4), `redis`, `api` (PHP-FPM), `queue`
   Horizon or queue metrics for monitoring.
 * Migrations run **once per release** from the pipeline (`php artisan migrate --force`) before
   rolling out new containers; then `db:seed --class=RolesAndPermissionsSeeder --force` (idempotent).
+* Scheduler must run (`php artisan schedule:work` / cron `schedule:run` every minute): it expires
+  agent licences daily at 00:15 America/New_York (`hitlease:licenses:expire`).
 * Observability: set `SENTRY_LARAVEL_DSN` / OTLP endpoint (integration scheduled for Sprint 12),
   alerts on 5xx rate, queue backlog, failed jobs, MLS sync staleness.
 * Mail: verified sender domain (SPF, DKIM, DMARC).

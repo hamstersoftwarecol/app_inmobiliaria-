@@ -26,6 +26,9 @@ export function SiteHeader() {
           <Link href="/search" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden sm:inline-flex")}>
             {t("nav.search")}
           </Link>
+          <Link href="/agents" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden sm:inline-flex")}>
+            {t("nav.agents")}
+          </Link>
 
           <label className="sr-only" htmlFor="locale-switcher">
             {t("nav.language")}

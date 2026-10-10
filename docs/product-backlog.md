@@ -25,15 +25,18 @@ dependency (not counted as done).
 | WEB-1 | Web shell, bilingual UI, auth screens, dashboard, settings (MFA, sessions), admin users/roles | P0 | ✅ | Vitest + Playwright |
 | MOB-1 | Mobile shell, token auth, secure storage, bilingual, bottom navigation | P0 | ✅ | `flutter test` |
 
-## Sprint 2 — Users, agency and agents foundation
+## Sprint 2 — Agency, offices, agents and licences (delivered)
 
-| ID | Item | Pri | Depends on |
-|---|---|---|---|
-| AGY-1 | `agencies`, `offices` + broker settings UI | P1 | RBAC-1 |
-| AGT-1 | `agents`, `agent_licenses` (unverified → verified workflow, verifier + source recorded) | P0 | AGY-1 |
-| AGT-2 | Public agent profiles (`/agents/[slug]`), agent admin screens | P1 | AGT-1 |
-| ADM-1 | Web admin: create/edit users, assign roles, audit log viewer | P1 | RBAC-1 |
-| SET-1 | `system_settings` (audited) | P2 | |
+| ID | Item | Pri | Status | Evidence |
+|---|---|---|---|---|
+| AGY-1 | `agencies`, `offices` (PostGIS location, one HQ per agency) + admin API and UI | P1 | ✅ | `AgencyAndOfficeTest`, `/admin/agency` |
+| AGT-1 | `agents`, `agent_licenses`; licence workflow pending → verified/rejected → expired/revoked with source, reference, expiry, separation of duties, daily expiry job, notifications, audit | P0 | ✅ | `LicenseVerificationTest`, `/admin/licenses`, E2E `agents.spec.ts` |
+| AGT-2 | Public agent directory + profile pages (SSR, JSON-LD), agent self-service profile & licence submission, admin agent screens | P1 | ✅ | `PublicDirectoryTest`, `AgentAdministrationTest`, Vitest, Playwright |
+| AGT-3 | Agent photo upload | P2 | ⛔ | Needs Cloudflare R2 bucket (PRP-3); `photo_url` accepts an HTTPS URL meanwhile |
+| AGT-4 | Automated licence lookup against the NJ Real Estate Commission | P2 | ⛔ | No official API/authorization known; verification is a manual, recorded staff step |
+| AGT-5 | Mobile agent directory / agent profile screens | P1 | ⏳ | Moved to Sprint 10 (mobile parity) |
+| ADM-1 | Web admin: create/edit users, audit log viewer | P1 | ⏳ | Carried over to Sprint 3 |
+| SET-1 | `system_settings` (audited) | P2 | ⏳ | |
 
 ## Sprint 3–4 — MLS pipeline & properties
 
