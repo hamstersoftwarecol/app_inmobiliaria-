@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input, Select } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { useTranslation } from "@/hooks/use-translation";
 import { applyApiErrors } from "@/lib/form-errors";
 import { inquiryService } from "@/services/crm-service";
@@ -26,6 +27,7 @@ interface Props {
  */
 export function ContactForm({ propertySlug, agentSlug, defaultIntent = "buy", title }: Props) {
   const { t, tv, locale } = useTranslation();
+  const hydrated = useHydrated();
   const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const form = useForm<InquiryValues>({
     resolver: zodResolver(inquirySchema),
@@ -105,7 +107,7 @@ export function ContactForm({ propertySlug, agentSlug, defaultIntent = "buy", ti
         <input type="checkbox" className="mt-0.5 size-4 accent-brand-700" {...register("marketing_consent")} />
         <span>{t("contact.marketing")}</span>
       </label>
-      <Button type="submit" className="w-full" loading={isSubmitting}>
+      <Button type="submit" className="w-full" loading={isSubmitting} disabled={!hydrated}>
         {t("contact.send")}
       </Button>
       <p className="text-xs text-muted-foreground">{t("contact.privacy")}</p>

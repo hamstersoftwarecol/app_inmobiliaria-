@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input, Select } from "@/components/ui/input";
 import { authKeys } from "@/hooks/use-auth";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { useTranslation } from "@/hooks/use-translation";
 import { applyApiErrors } from "@/lib/form-errors";
 import { authService } from "@/services/auth-service";
@@ -21,6 +22,7 @@ const FIELDS = ["first_name", "last_name", "email", "phone", "account_type", "pa
 
 export function RegisterForm() {
   const { t, tv, locale } = useTranslation();
+  const hydrated = useHydrated();
   const router = useRouter();
   const queryClient = useQueryClient();
   const [formError, setFormError] = useState<string | null>(null);
@@ -100,7 +102,7 @@ export function RegisterForm() {
             </p>
           )}
         </div>
-        <Button type="submit" className="w-full" loading={isSubmitting}>
+        <Button type="submit" className="w-full" loading={isSubmitting} disabled={!hydrated}>
           {t("auth.submitRegister")}
         </Button>
         <p className="text-center text-sm text-muted-foreground">

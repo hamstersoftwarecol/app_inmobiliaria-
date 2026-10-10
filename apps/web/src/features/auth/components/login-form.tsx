@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { FormField } from "@/components/ui/form-field";
 import { Input } from "@/components/ui/input";
 import { authKeys } from "@/hooks/use-auth";
+import { useHydrated } from "@/hooks/use-hydrated";
 import { useTranslation } from "@/hooks/use-translation";
 import { applyApiErrors } from "@/lib/form-errors";
 import { authService } from "@/services/auth-service";
@@ -26,6 +27,7 @@ export function safeRedirect(target: string | null): string {
 
 export function LoginForm() {
   const { t, tv } = useTranslation();
+  const hydrated = useHydrated();
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
@@ -90,7 +92,7 @@ export function LoginForm() {
           </Link>
         </div>
 
-        <Button type="submit" className="w-full" loading={isSubmitting}>
+        <Button type="submit" className="w-full" loading={isSubmitting} disabled={!hydrated}>
           {t("auth.submitLogin")}
         </Button>
 
