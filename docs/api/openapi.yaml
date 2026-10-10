@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hitlease Real Estate API
-  version: 1.0.0-alpha.1
+  version: 1.0.0-alpha.2
   summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
   description: |
     Central API consumed by the Next.js web app and the Flutter mobile app.
@@ -48,7 +48,13 @@ tags:
   - name: Search
     description: Planned (Sprint 5).
   - name: Agents
-    description: Planned (Sprint 7).
+    description: Public agent directory (only verified, opted-in agents).
+  - name: Agent Self-Service
+    description: The signed-in agent's own profile and licence submissions.
+  - name: Admin Agency
+    description: Agencies and offices.
+  - name: Admin Agents
+    description: Agent profiles and the licence verification workflow.
   - name: CRM
     description: Planned (Sprint 7).
   - name: Appointments
@@ -916,6 +922,487 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/ConnectionTestResult" }
 
+  /agents:
+    get:
+      tags: [Agents]
+      operationId: listPublicAgents
+      summary: Public agent directory
+      description: Only active, opted-in agents with an active account and a verified, unexpired licence.
+      security: []
+      parameters:
+        - { name: search, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: language, in: query, schema: { $ref: "#/components/schemas/LanguageCode" } }
+        - { name: specialty, in: query, schema: { $ref: "#/components/schemas/Specialty" } }
+        - { name: city, in: query, schema: { type: string } }
+        - $ref: "#/components/parameters/Page"
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+      responses:
+        "200":
+          description: Paginated public agents
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/PublicAgent" } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /agents/{slug}:
+    get:
+      tags: [Agents]
+      operationId: getPublicAgent
+      summary: Public agent profile
+      security: []
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }
+      responses:
+        "200":
+          description: Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PublicAgent" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /me/agent-profile:
+    get:
+      tags: [Agent Self-Service]
+      operationId: getOwnAgentProfile
+      summary: Own agent profile with licences
+      responses:
+        "200":
+          description: Agent profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Agent Self-Service]
+      operationId: updateOwnAgentProfile
+      summary: Update own public profile fields
+      description: Only `public_email`, `public_phone`, `bio`, `bio_es`, `languages`, `specialties`, `is_public` are applied; office, agency and status are staff-managed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentProfileInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /me/agent-profile/licenses:
+    post:
+      tags: [Agent Self-Service]
+      operationId: submitOwnLicense
+      summary: Submit a licence for verification (starts as pending_verification)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseSubmission" }
+      responses:
+        "201":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/agencies:
+    get:
+      tags: [Admin Agency]
+      operationId: adminListAgencies
+      summary: List agencies (`agents.view_any`)
+      responses:
+        "200":
+          description: Agencies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Agency" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Admin Agency]
+      operationId: adminCreateAgency
+      summary: Create an agency (`agency.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgencyInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agency" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/agencies/{agency}:
+    parameters:
+      - { name: agency, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Admin Agency]
+      operationId: adminGetAgency
+      summary: Agency with offices
+      responses:
+        "200":
+          description: Agency
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agency" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Admin Agency]
+      operationId: adminUpdateAgency
+      summary: Update agency (`agency.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgencyInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agency" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/offices:
+    get:
+      tags: [Admin Agency]
+      operationId: adminListOffices
+      summary: List offices
+      parameters:
+        - { name: agency_id, in: query, schema: { type: integer } }
+        - { name: active, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Offices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Office" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Admin Agency]
+      operationId: adminCreateOffice
+      summary: Create an office (`agency.manage`). A new headquarters demotes the previous one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OfficeInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Office" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/offices/{office}:
+    parameters:
+      - { name: office, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [Admin Agency]
+      operationId: adminUpdateOffice
+      summary: Update an office (`agency.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OfficeInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Office" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Admin Agency]
+      operationId: adminDeleteOffice
+      summary: Soft-delete an office without active agents (`office_has_agents` otherwise)
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /admin/agents:
+    get:
+      tags: [Admin Agents]
+      operationId: adminListAgents
+      summary: List agent profiles (`agents.view_any`)
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [active, inactive] } }
+        - { name: office_id, in: query, schema: { type: integer } }
+        - { name: agency_id, in: query, schema: { type: integer } }
+        - { name: license, in: query, schema: { type: string, enum: [verified, pending, none] } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated agents
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/Agent" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Admin Agents]
+      operationId: adminCreateAgent
+      summary: Create an agent profile for a user with the agent or broker role (`agents.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [user_id, agency_id]
+                  properties:
+                    user_id: { type: integer }
+                    agency_id: { type: integer }
+                - $ref: "#/components/schemas/AgentProfileInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/agents/{agent}:
+    parameters:
+      - { name: agent, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Admin Agents]
+      operationId: adminGetAgent
+      summary: Agent profile with licence history
+      responses:
+        "200":
+          description: Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Admin Agents]
+      operationId: adminUpdateAgent
+      summary: Update an agent profile or status (`agents.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/AgentProfileInput"
+                - type: object
+                  properties:
+                    status: { type: string, enum: [active, inactive] }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/agents/{agent}/licenses:
+    post:
+      tags: [Admin Agents]
+      operationId: adminSubmitAgentLicense
+      summary: Submit a licence on behalf of an agent (`agents.manage`)
+      parameters:
+        - { name: agent, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseSubmission" }
+      responses:
+        "201":
+          description: Submitted (pending_verification)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/licenses:
+    get:
+      tags: [Admin Agents]
+      operationId: adminListLicenses
+      summary: Licence verification queue
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/LicenseStatus" } }
+        - { name: expiring_within_days, in: query, schema: { type: integer, minimum: 1, maximum: 365 } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated licences
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/AgentLicense" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/licenses/{license}/verify:
+    post:
+      tags: [Admin Agents]
+      operationId: adminVerifyLicense
+      summary: Verify a pending licence (`agents.verify_licenses`, never your own)
+      parameters:
+        - { name: license, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [verification_source, verification_reference, expires_on]
+              properties:
+                verification_source: { $ref: "#/components/schemas/VerificationSource" }
+                verification_reference: { type: string, minLength: 3, maxLength: 255, description: "How it was checked, e.g. lookup date or document id" }
+                expires_on: { type: string, format: date }
+                notes: { type: string, maxLength: 2000 }
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/licenses/{license}/reject:
+    post:
+      tags: [Admin Agents]
+      operationId: adminRejectLicense
+      summary: Reject a pending licence with a reason
+      parameters:
+        - { name: license, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseReason" }
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/licenses/{license}/revoke:
+    post:
+      tags: [Admin Agents]
+      operationId: adminRevokeLicense
+      summary: Revoke a verified licence with a reason
+      parameters:
+        - { name: license, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseReason" }
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
   # ------------------------------------------------------------------ Planned
   /properties:
     get:
@@ -931,15 +1418,6 @@ paths:
       tags: [Search]
       operationId: searchProperties
       summary: "[Planned] Search with filters, bbox, radius or polygon (PostGIS)"
-      x-status: planned
-      security: []
-      responses:
-        "200": { $ref: "#/components/responses/Planned" }
-  /agents:
-    get:
-      tags: [Agents]
-      operationId: listAgents
-      summary: "[Planned] Public agent directory"
       x-status: planned
       security: []
       responses:
@@ -1297,3 +1775,208 @@ components:
           properties:
             code: { type: string }
             message: { type: string }
+
+    LanguageCode:
+      type: string
+      enum: [en, es, pt, fr, it, pl, zh, ko, hi, gu, ar, ru, ht, tl]
+
+    Specialty:
+      type: string
+      enum: [buyers, sellers, rentals, first_time_buyers, luxury, condos, multi_family, new_construction, commercial, land, relocation, investment, seniors]
+
+    LicenseStatus:
+      type: string
+      enum: [pending_verification, verified, rejected, expired, revoked]
+
+    VerificationSource:
+      type: string
+      enum: [state_license_lookup, document_review, regulator_confirmation]
+
+    LicenseSubmission:
+      type: object
+      required: [license_number, license_type]
+      properties:
+        license_number: { type: string, minLength: 4, maxLength: 40 }
+        license_state: { type: string, minLength: 2, maxLength: 2, default: NJ }
+        license_type: { type: string, enum: [salesperson, broker_salesperson, broker, referral_agent] }
+        issued_on: { type: string, format: date }
+        expires_on: { type: string, format: date }
+
+    LicenseReason:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 5, maxLength: 2000 }
+
+    AgentLicense:
+      type: object
+      properties:
+        id: { type: integer }
+        agent_id: { type: integer }
+        license_number: { type: string }
+        license_state: { type: string }
+        license_type: { type: string }
+        license_type_label: { type: string }
+        status: { $ref: "#/components/schemas/LicenseStatus" }
+        is_currently_valid: { type: boolean }
+        issued_on: { type: [string, "null"], format: date }
+        expires_on: { type: [string, "null"], format: date }
+        verified_at: { type: [string, "null"], format: date-time }
+        verified_by:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+        verification_source: { oneOf: [{ $ref: "#/components/schemas/VerificationSource" }, { type: "null" }] }
+        verification_reference: { type: [string, "null"] }
+        verification_notes: { type: [string, "null"] }
+        status_reason: { type: [string, "null"] }
+        status_changed_at: { type: [string, "null"], format: date-time }
+        agent:
+          type: object
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+            email: { type: string }
+            user_id: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    AgentProfileInput:
+      type: object
+      properties:
+        office_id: { type: [integer, "null"] }
+        public_email: { type: [string, "null"], format: email }
+        public_phone: { type: [string, "null"] }
+        bio: { type: [string, "null"], maxLength: 5000 }
+        bio_es: { type: [string, "null"], maxLength: 5000 }
+        languages: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/LanguageCode" } }
+        specialties: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/Specialty" } }
+        photo_url: { type: [string, "null"], format: uri }
+        is_public: { type: boolean }
+        joined_on: { type: [string, "null"], format: date }
+
+    Agent:
+      type: object
+      properties:
+        id: { type: integer }
+        slug: { type: string }
+        user:
+          type: object
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+            email: { type: string }
+            status: { type: string }
+        agency:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        office:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            city: { type: string }
+        status: { type: string, enum: [active, inactive] }
+        is_public: { type: boolean }
+        public_email: { type: [string, "null"] }
+        public_phone: { type: [string, "null"] }
+        bio: { type: [string, "null"] }
+        bio_es: { type: [string, "null"] }
+        languages: { type: array, items: { type: string } }
+        specialties: { type: array, items: { type: string } }
+        photo_url: { type: [string, "null"] }
+        joined_on: { type: [string, "null"], format: date }
+        license_verified: { type: boolean }
+        verified_license: { oneOf: [{ $ref: "#/components/schemas/AgentLicense" }, { type: "null" }] }
+        licenses: { type: array, items: { $ref: "#/components/schemas/AgentLicense" } }
+        created_at: { type: string, format: date-time }
+
+    PublicAgent:
+      type: object
+      properties:
+        slug: { type: string }
+        full_name: { type: string }
+        first_name: { type: string }
+        photo_url: { type: [string, "null"] }
+        email: { type: [string, "null"], description: Public contact e-mail chosen by the agent }
+        phone: { type: [string, "null"] }
+        bio: { type: [string, "null"] }
+        bio_es: { type: [string, "null"] }
+        languages: { type: array, items: { type: string } }
+        specialties: { type: array, items: { type: string } }
+        agency:
+          type: object
+          properties:
+            name: { type: string }
+            license_number: { type: [string, "null"] }
+        office:
+          type: [object, "null"]
+          properties:
+            name: { type: string }
+            street_address: { type: string }
+            unit: { type: [string, "null"] }
+            city: { type: string }
+            state: { type: string }
+            postal_code: { type: string }
+            phone: { type: [string, "null"] }
+        license:
+          type: object
+          properties:
+            type: { type: string }
+            type_label: { type: string }
+            state: { type: string }
+            number: { type: string }
+            verified: { type: boolean, const: true }
+
+    AgencyInput:
+      type: object
+      properties:
+        name: { type: string, maxLength: 150 }
+        legal_name: { type: [string, "null"] }
+        license_number: { type: [string, "null"], description: Brokerage licence as entered (not verified) }
+        email: { type: [string, "null"], format: email }
+        phone: { type: [string, "null"] }
+        website: { type: [string, "null"], format: uri }
+        timezone: { type: string, examples: [America/New_York] }
+
+    Agency:
+      allOf:
+        - $ref: "#/components/schemas/AgencyInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            offices_count: { type: integer }
+            agents_count: { type: integer }
+            offices: { type: array, items: { $ref: "#/components/schemas/Office" } }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+
+    OfficeInput:
+      type: object
+      properties:
+        agency_id: { type: integer, description: Required on create; cannot be changed }
+        name: { type: string }
+        email: { type: [string, "null"], format: email }
+        phone: { type: [string, "null"] }
+        street_address: { type: string }
+        unit: { type: [string, "null"] }
+        city: { type: string }
+        county: { type: [string, "null"] }
+        state: { type: string, default: NJ }
+        postal_code: { type: string, pattern: "^\\d{5}(-\\d{4})?$" }
+        latitude: { type: [number, "null"], minimum: -90, maximum: 90 }
+        longitude: { type: [number, "null"], minimum: -180, maximum: 180 }
+        is_headquarters: { type: boolean }
+        is_active: { type: boolean }
+
+    Office:
+      allOf:
+        - $ref: "#/components/schemas/OfficeInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            agents_count: { type: integer }

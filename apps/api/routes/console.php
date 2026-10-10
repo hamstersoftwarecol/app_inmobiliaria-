@@ -1,8 +1,10 @@
 <?php
 
-use Illuminate\Foundation\Inspiring;
-use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Schedule;
 
-Artisan::command('inspire', function () {
-    $this->comment(Inspiring::quote());
-})->purpose('Display an inspiring quote');
+// Agency time zone so "expired yesterday" matches New Jersey calendar days.
+Schedule::command('hitlease:licenses:expire')
+    ->dailyAt('00:15')
+    ->timezone(config('hitlease.agency_timezone'))
+    ->withoutOverlapping()
+    ->onOneServer();

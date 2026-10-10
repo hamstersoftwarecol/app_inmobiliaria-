@@ -23,6 +23,8 @@ enum Permission: string
     case AgencyManage = 'agency.manage';
     case AgentsViewAny = 'agents.view_any';
     case AgentsManage = 'agents.manage';
+    case AgentsVerifyLicenses = 'agents.verify_licenses';
+    case AgentsManageOwnProfile = 'agents.manage_own_profile';
 
     // Properties
     case PropertiesViewAny = 'properties.view_any';

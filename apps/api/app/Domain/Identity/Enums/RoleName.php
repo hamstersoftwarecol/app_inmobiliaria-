@@ -91,6 +91,7 @@ enum RoleName: string
                 Permission::MessagesUse,
             ],
             self::Agent => [
+                Permission::AgentsManageOwnProfile,
                 Permission::PropertiesCreate,
                 Permission::PropertiesUpdateOwn,
                 Permission::LeadsViewAssigned,

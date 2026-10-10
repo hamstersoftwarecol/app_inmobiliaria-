@@ -1,7 +1,11 @@
 <?php
 
+use App\Http\Controllers\Api\V1\Admin\AgencyController;
+use App\Http\Controllers\Api\V1\Admin\AgentController;
 use App\Http\Controllers\Api\V1\Admin\AuditLogController;
+use App\Http\Controllers\Api\V1\Admin\LicenseController;
 use App\Http\Controllers\Api\V1\Admin\MlsProviderController;
+use App\Http\Controllers\Api\V1\Admin\OfficeController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
@@ -10,6 +14,8 @@ use App\Http\Controllers\Api\V1\Auth\MfaController;
 use App\Http\Controllers\Api\V1\Auth\PasswordController;
 use App\Http\Controllers\Api\V1\Auth\ProfileController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
+use App\Http\Controllers\Api\V1\Me\AgentProfileController;
+use App\Http\Controllers\Api\V1\Public\AgentDirectoryController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -18,6 +24,18 @@ use Illuminate\Support\Facades\Route;
 Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
     Route::get('/health', fn () => response()->json(['status' => 'ok', 'version' => 'v1']))->name('health');
+
+    // ---------------------------------------------------------------- Public directory
+    Route::get('/agents', [AgentDirectoryController::class, 'index'])->name('agents.index');
+    Route::get('/agents/{slug}', [AgentDirectoryController::class, 'show'])
+        ->where('slug', '[a-z0-9-]+')->name('agents.show');
+
+    // ---------------------------------------------------------------- Self-service
+    Route::prefix('me')->name('me.')->middleware(['auth:sanctum', 'active'])->group(function () {
+        Route::get('/agent-profile', [AgentProfileController::class, 'show'])->name('agent-profile.show');
+        Route::patch('/agent-profile', [AgentProfileController::class, 'update'])->name('agent-profile.update');
+        Route::post('/agent-profile/licenses', [AgentProfileController::class, 'storeLicense'])->name('agent-profile.licenses.store');
+    });
 
     // ---------------------------------------------------------------- Auth (guest)
     Route::prefix('auth')->name('auth.')->group(function () {
@@ -73,6 +91,27 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('/roles', [RoleController::class, 'index'])->can('roles.view')->name('roles.index');
         Route::get('/permissions', [RoleController::class, 'permissions'])->can('roles.view')->name('permissions.index');
         Route::put('/roles/{role}/permissions', [RoleController::class, 'updatePermissions'])->can('roles.manage')->name('roles.permissions');
+
+        Route::get('/agencies', [AgencyController::class, 'index'])->can('agents.view_any')->name('agencies.index');
+        Route::post('/agencies', [AgencyController::class, 'store'])->can('agency.manage')->name('agencies.store');
+        Route::get('/agencies/{agency}', [AgencyController::class, 'show'])->can('agents.view_any')->name('agencies.show');
+        Route::patch('/agencies/{agency}', [AgencyController::class, 'update'])->can('agency.manage')->name('agencies.update');
+
+        Route::get('/offices', [OfficeController::class, 'index'])->can('agents.view_any')->name('offices.index');
+        Route::post('/offices', [OfficeController::class, 'store'])->can('agency.manage')->name('offices.store');
+        Route::patch('/offices/{office}', [OfficeController::class, 'update'])->can('agency.manage')->name('offices.update');
+        Route::delete('/offices/{office}', [OfficeController::class, 'destroy'])->can('agency.manage')->name('offices.destroy');
+
+        Route::get('/agents', [AgentController::class, 'index'])->name('agents.index');
+        Route::post('/agents', [AgentController::class, 'store'])->name('agents.store');
+        Route::get('/agents/{agent}', [AgentController::class, 'show'])->name('agents.show');
+        Route::patch('/agents/{agent}', [AgentController::class, 'update'])->name('agents.update');
+        Route::post('/agents/{agent}/licenses', [AgentController::class, 'storeLicense'])->name('agents.licenses.store');
+
+        Route::get('/licenses', [LicenseController::class, 'index'])->name('licenses.index');
+        Route::post('/licenses/{license}/verify', [LicenseController::class, 'verify'])->name('licenses.verify');
+        Route::post('/licenses/{license}/reject', [LicenseController::class, 'reject'])->name('licenses.reject');
+        Route::post('/licenses/{license}/revoke', [LicenseController::class, 'revoke'])->name('licenses.revoke');
 
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->can('audit_logs.view')->name('audit-logs.index');
 

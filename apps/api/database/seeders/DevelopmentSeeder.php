@@ -4,9 +4,13 @@ namespace Database\Seeders;
 
 use App\Domain\Identity\Enums\RoleName;
 use App\Domain\Mls\Enums\ProviderStatus;
+use App\Models\Agency;
+use App\Models\Agent;
 use App\Models\MlsProvider;
+use App\Models\Office;
 use App\Models\Role;
 use App\Models\User;
+use App\Support\UniqueSlug;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -50,6 +54,31 @@ class DevelopmentSeeder extends Seeder
             ]);
             $model->forceFill(['status' => ProviderStatus::PendingAuthorization, 'is_enabled' => false])->save();
             $model->displayRule()->firstOrCreate([]);
+        }
+
+        // Demo agency/office and agent profiles; licences start pending so the
+        // verification workflow can be exercised locally.
+        $agency = Agency::query()->firstOrCreate(['slug' => 'hitlease-demo'], [
+            'name' => 'Hitlease Real Estate (demo)',
+            'timezone' => 'America/New_York',
+        ]);
+        $office = Office::query()->firstOrCreate(['agency_id' => $agency->id, 'slug' => 'demo-office'], [
+            'name' => 'Demo Office',
+            'street_address' => '100 Example Avenue',
+            'city' => 'Hackensack',
+            'county' => 'Bergen',
+            'postal_code' => '07601',
+            'is_headquarters' => true,
+        ]);
+        foreach (['agent@hitlease.test', 'broker@hitlease.test'] as $email) {
+            $user = User::query()->where('email', $email)->firstOrFail();
+            if (! $user->agentProfile()->exists()) {
+                $agent = new Agent(['office_id' => $office->id, 'languages' => ['en', 'es'], 'is_public' => true]);
+                $agent->user()->associate($user);
+                $agent->agency()->associate($agency);
+                $agent->slug = UniqueSlug::for($user->full_name, Agent::query());
+                $agent->save();
+            }
         }
 
         $this->command?->warn("Development accounts (<role>@hitlease.test) password: {$password}");
