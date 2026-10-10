@@ -34,7 +34,7 @@ dependency (not counted as done).
 | AGT-2 | Public agent directory + profile pages (SSR, JSON-LD), agent self-service profile & licence submission, admin agent screens | P1 | ✅ | `PublicDirectoryTest`, `AgentAdministrationTest`, Vitest, Playwright |
 | AGT-3 | Agent photo upload | P2 | ⛔ | Needs Cloudflare R2 bucket (PRP-3); `photo_url` accepts an HTTPS URL meanwhile |
 | AGT-4 | Automated licence lookup against the NJ Real Estate Commission | P2 | ⛔ | No official API/authorization known; verification is a manual, recorded staff step |
-| AGT-5 | Mobile agent directory / agent profile screens | P1 | ⏳ | Moved to Sprint 10 (mobile parity) |
+| AGT-5 | Mobile agent directory / agent profile screens | P1 | ✅ | MOB-13 |
 | ADM-1 | Web admin: create/edit users, audit log viewer | P1 | ✅ | Delivered in Sprint 4 |
 | SET-1 | `system_settings` (audited) | P2 | ⏳ | |
 
@@ -50,7 +50,7 @@ dependency (not counted as done).
 | PRP-2 | Internal listing CRUD, publish/unpublish with completeness check, agent assignment, ownership policies, MLS listings read-only | P0 | ✅ | `PropertyManagementTest`, `/dashboard/properties`, E2E `properties.spec.ts` |
 | PRP-3 | Photo upload: type/size/dimension validation, re-encoding (EXIF/GPS stripped), ordering | P1 | 🟡 | `PropertyMediaTest`; stored on the `public` disk — Cloudflare R2 storage ⛔ (bucket + credentials + `league/flysystem-aws-s3-v3`) |
 | PRP-4 | Public listing pages (SSR), JSON-LD `RealEstateListing`, sitemap entry, MLS attribution/disclaimer at render time | P1 | ✅ | `PublicPropertyComplianceTest`, Vitest, Playwright |
-| PRP-5 | Mobile listing screens | P1 | ⏳ | Sprint 10 (mobile parity) |
+| PRP-5 | Mobile listing screens | P1 | ✅ | MOB-1, MOB-2 |
 | ADM-1 | Web admin: create/edit users, audit log viewer | P1 | ✅ | Delivered in Sprint 4 |
 
 ## Sprint 4 — Search, favorites, saved searches (delivered)
@@ -78,7 +78,7 @@ dependency (not counted as done).
 | CRM-6 | Reports: totals, conversion, median first response, by stage/source/agent (agency days) | P1 | ✅ | `TasksAndReportsTest`, `/dashboard/crm/reports` |
 | CRM-7 | Configurable pipelines/stages per agency | P2 | ⏳ | Fixed stages for now (`LeadStatus`) |
 | CRM-8 | Data-subject requests (export/erase a lead's personal data) and retention schedule | P1 | ⏳ | Needs the agency's privacy policy |
-| CRM-9 | Mobile CRM (agent mode) | P1 | ⏳ | Sprint 10 |
+| CRM-9 | Mobile CRM (agent mode) | P1 | ✅ | MOB-7, MOB-15 |
 
 ## Sprint 8 — Showings & notifications (delivered)
 
@@ -132,7 +132,13 @@ by the parties' attorneys (stated in the UI).
 | MOB-10 | Offline cache | P2 | ⏳ | Not built: only data the MLS licences allow may be cached; decide per licence |
 | MOB-11 | Store release (signing, listings, privacy labels) | P1 | ⛔ | Needs developer accounts and legal texts |
 
-Uploads, offers and admin remain web-only for now (the app links to them).
+| MOB-12 | Offers: list by status, negotiation history, record (`Idempotency-Key`), edit draft, submit, counter, accept (opens the transaction), reject, withdraw — actions follow the API's `can` flags | P1 | ✅ | `offers_test` |
+| MOB-13 | Agent directory (name, language, specialty) and public agent profile with verified licence | P1 | ✅ | `agents_test` |
+| MOB-14 | Account: edit profile, change password, two-factor setup/disable and recovery codes, signed-in devices, e-mail preferences, account closure | P0 | ✅ | `account_test` |
+| MOB-15 | Agent tools: weekly availability and time off, new manual lead, own agent profile and licence submission | P1 | ✅ | `agent_tools_test` |
+
+Admin, listing management with photo uploads, transaction document uploads and e-mail address
+changes remain web-only on purpose.
 
 ## Sprint 11 — Admin dashboard & reports (delivered)
 

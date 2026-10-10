@@ -24,6 +24,12 @@ class CrmRepository {
     return Lead.fromJson(res.data!['data'] as Map<String, dynamic>, meta: res.data!['meta'] as Map<String, dynamic>?);
   });
 
+  /// Records a lead taken by phone, walk-in, referral… Returns its id.
+  Future<int> createLead(Map<String, dynamic> input) => guardApi(() async {
+    final res = await _dio.post<Map<String, dynamic>>('/crm/leads', data: input);
+    return (res.data!['data'] as Map<String, dynamic>)['id'] as int;
+  });
+
   Future<void> setStatus(int id, String status, {String? lostReason}) =>
       guardApi(() => _dio.post<void>('/crm/leads/$id/status', data: {'status': status, 'lost_reason': ?lostReason}));
 

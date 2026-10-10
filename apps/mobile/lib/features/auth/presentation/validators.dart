@@ -23,4 +23,45 @@ abstract final class Validators {
   }
 
   static String? mfaCode(String? value) => RegExp(r'^\d{6}$').hasMatch(value?.trim() ?? '') ? null : 'mfaCodeInvalid';
+
+  static final _money = RegExp(r'^\d+(\.\d{1,2})?$');
+  static final _phone = RegExp(r'^\+?[0-9 ().-]{7,20}$');
+
+  /// A positive dollar amount (up to 2 decimals).
+  static String? money(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return 'required';
+    if (!_money.hasMatch(v) || double.parse(v) > 999999999999) return 'invalidNumber';
+    return double.parse(v) > 0 ? null : 'mustBePositive';
+  }
+
+  static String? optionalMoney(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return null;
+    return _money.hasMatch(v) && double.parse(v) <= 999999999999 ? null : 'invalidNumber';
+  }
+
+  static String? optionalPercent(String? value) {
+    final v = value?.trim() ?? '';
+    if (v.isEmpty) return null;
+    if (!RegExp(r'^\d{1,3}(\.\d{1,2})?$').hasMatch(v)) return 'invalidNumber';
+    return double.parse(v) <= 100 ? null : 'percentRange';
+  }
+
+  static String? optionalEmail(String? value) => (value == null || value.trim().isEmpty) ? null : email(value);
+
+  static String? optionalPhone(String? value) {
+    final v = value?.trim() ?? '';
+    return v.isEmpty || _phone.hasMatch(v) ? null : 'invalidPhone';
+  }
+
+  /// Required text of at most [max] characters.
+  static String? Function(String?) requiredMax(int max) =>
+      (value) => required(value) ?? ((value!.trim().length > max) ? 'tooLong' : null);
 }
+
+/// Parses an optional decimal form field ('' → null).
+double? parseOptionalNumber(String text) => text.trim().isEmpty ? null : double.tryParse(text.trim());
+
+/// Trimmed text, or null when empty.
+String? nullIfBlank(String text) => text.trim().isEmpty ? null : text.trim();

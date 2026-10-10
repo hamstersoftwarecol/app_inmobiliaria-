@@ -111,3 +111,14 @@ Map<String, dynamic> propertyJson({
         }
       : null,
 };
+
+/// Scrolls the screen's main list until [finder] is built and visible (lists build lazily).
+Future<void> scrollTo(WidgetTester tester, Finder finder) async {
+  await tester.scrollUntilVisible(
+    finder,
+    200,
+    scrollable: find.descendant(of: find.byType(ListView).last, matching: find.byType(Scrollable)).first,
+  );
+  await tester.ensureVisible(finder);
+  await tester.pumpAndSettle();
+}

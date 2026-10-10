@@ -138,7 +138,7 @@ const featureStringsEn = <String, String>{
   'dealNumber': 'Transaction #{id}',
   // Agent mode
   'agentMode': 'Agent mode',
-  'staffMfaRequired': 'Staff accounts need two-factor authentication for the CRM. Enable it from the web app.',
+  'staffMfaRequired': 'Staff accounts need two-factor authentication for the CRM. Enable it in Profile › Security.',
   'leads': 'Leads',
   'noLeads': 'No leads here.',
   'lead_new': 'New',
@@ -348,7 +348,7 @@ const featureStringsEs = <String, String>{
   'dealNumber': 'Transacción n.º {id}',
   'agentMode': 'Modo agente',
   'staffMfaRequired':
-      'Las cuentas del personal necesitan autenticación en dos pasos para el CRM. Actívala desde la aplicación web.',
+      'Las cuentas del personal necesitan autenticación en dos pasos para el CRM. Actívala en Perfil › Seguridad.',
   'leads': 'Leads',
   'noLeads': 'No hay leads aquí.',
   'lead_new': 'Nuevo',

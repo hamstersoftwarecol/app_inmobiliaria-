@@ -7,6 +7,7 @@ import '../../../core/l10n/locale_controller.dart';
 import '../../../core/router/app_router.dart';
 import '../../../core/util/format.dart';
 import '../../../shared/widgets/async_view.dart';
+import '../../auth/application/auth_controller.dart';
 import '../data/crm_repository.dart';
 import '../domain/lead.dart';
 
@@ -26,8 +27,18 @@ class _LeadsScreenState extends ConsumerState<LeadsScreen> {
     final lang = ref.watch(localeControllerProvider).languageCode;
     final leads = ref.watch(leadsProvider(_status));
 
+    final user = ref.watch(authControllerProvider).value;
+
     return Scaffold(
       appBar: AppBar(title: Text(l10n.t('leads'))),
+      floatingActionButton: user != null && user.can('leads.create')
+          ? FloatingActionButton.extended(
+              key: const Key('new-lead'),
+              icon: const Icon(Icons.person_add_alt),
+              label: Text(l10n.t('newLead')),
+              onPressed: () => context.push(Routes.newLead),
+            )
+          : null,
       body: Column(
         children: [
           SizedBox(

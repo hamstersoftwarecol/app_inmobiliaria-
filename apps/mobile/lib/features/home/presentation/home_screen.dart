@@ -7,6 +7,7 @@ import '../../../core/router/app_router.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/user.dart';
 import '../../notifications/data/notification_repository.dart';
+import '../../offers/presentation/offers_screen.dart';
 
 /// Hub: shortcuts for everyone, plus agent mode (leads, tasks, transactions) for agents and staff.
 class HomeScreen extends ConsumerWidget {
@@ -72,12 +73,23 @@ class HomeScreen extends ConsumerWidget {
           if (user != null && user.can('saved_searches.manage'))
             tile(Icons.bookmark_border, 'savedSearches', Routes.savedSearches),
           if (user != null && canSeeShowings(user)) tile(Icons.event, 'showings', Routes.showings),
+          if (user != null && canUseOffers(user)) tile(Icons.request_quote_outlined, 'offers', Routes.offers),
           tile(Icons.handshake_outlined, 'transactions', Routes.transactions),
+          Card(
+            child: ListTile(
+              key: const Key('home-agents'),
+              leading: const Icon(Icons.groups_outlined),
+              title: Text(l10n.t('ourAgents')),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => context.push(Routes.agents),
+            ),
+          ),
           if (user != null && canUseCrm(user)) ...[
             const SizedBox(height: 16),
             Text(l10n.t('agentMode'), style: Theme.of(context).textTheme.titleMedium),
             tile(Icons.people_outline, 'leads', Routes.leads, tileKey: const Key('home-leads')),
             tile(Icons.task_alt, 'tasks', Routes.tasks),
+            if (user.can('appointments.manage_own')) tile(Icons.schedule, 'availability', Routes.availability),
             if (user.isStaff && !user.mfaEnabled)
               Card(
                 child: ListTile(leading: const Icon(Icons.shield_outlined), title: Text(l10n.t('staffMfaRequired'))),

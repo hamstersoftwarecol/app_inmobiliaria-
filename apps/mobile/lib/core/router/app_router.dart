@@ -2,13 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/account/presentation/account_screens.dart';
+import '../../features/agents/presentation/agents_screen.dart';
+import '../../features/agents/presentation/my_agent_profile_screen.dart';
 import '../../features/auth/application/auth_controller.dart';
+import '../../features/availability/presentation/availability_screen.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
 import '../../features/auth/presentation/splash_screen.dart';
 import '../../features/crm/presentation/lead_detail_screen.dart';
 import '../../features/crm/presentation/leads_screen.dart';
+import '../../features/crm/presentation/new_lead_screen.dart';
 import '../../features/crm/presentation/tasks_screen.dart';
 import '../../features/deals/presentation/transactions_screen.dart';
 import '../../features/favorites/presentation/favorites_screen.dart';
@@ -18,6 +23,8 @@ import '../../features/messages/presentation/conversation_screen.dart';
 import '../../features/messages/presentation/conversations_screen.dart';
 import '../../features/messages/presentation/new_conversation_screen.dart';
 import '../../features/notifications/presentation/notifications_screen.dart';
+import '../../features/offers/presentation/offer_detail_screen.dart';
+import '../../features/offers/presentation/offers_screen.dart';
 import '../../features/profile/presentation/profile_screen.dart';
 import '../../features/properties/presentation/property_detail_screen.dart';
 import '../../features/properties/presentation/search_screen.dart';
@@ -43,11 +50,25 @@ abstract final class Routes {
   static const leads = '/home/leads';
   static const tasks = '/home/tasks';
   static const transactions = '/home/transactions';
+  static const offers = '/home/offers';
+  static const availability = '/home/availability';
+  static const newLead = '/home/leads/new';
+  static const agents = '/agents';
+  static const editProfile = '/profile/edit';
+  static const changePassword = '/profile/password';
+  static const security = '/profile/security';
+  static const emailPreferences = '/profile/email-preferences';
+  static const myAgentProfile = '/profile/agent';
 
   static String property(String slug) => '/property/${Uri.encodeComponent(slug)}';
   static String conversation(int id) => '/conversation/$id';
   static String lead(int id) => '$leads/$id';
   static String transaction(int id) => '$transactions/$id';
+  static String offer(int id) => '$offers/$id';
+  static String agent(String slug) => '/agents/${Uri.encodeComponent(slug)}';
+
+  static String newOffer({String? propertySlug, String? propertyTitle}) =>
+      Uri(path: '$offers/new', queryParameters: {'property': ?propertySlug, 'title': ?propertyTitle}).toString();
 
   static String newConversation({
     String? agentSlug,
@@ -119,6 +140,16 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/conversation/:id',
         builder: (_, state) => ConversationScreen(id: _id(state)),
       ),
+      GoRoute(
+        path: Routes.agents,
+        builder: (_, _) => const AgentsScreen(),
+        routes: [
+          GoRoute(
+            path: ':slug',
+            builder: (_, state) => AgentProfileScreen(slug: state.pathParameters['slug']!),
+          ),
+        ],
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => HomeShell(shell: shell),
         branches: [
@@ -132,10 +163,29 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(path: 'notifications', builder: (_, _) => const NotificationsScreen()),
                   GoRoute(path: 'saved-searches', builder: (_, _) => const SavedSearchesScreen()),
                   GoRoute(path: 'tasks', builder: (_, _) => const TasksScreen()),
+                  GoRoute(path: 'availability', builder: (_, _) => const AvailabilityScreen()),
+                  GoRoute(
+                    path: 'offers',
+                    builder: (_, _) => const OffersScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'new',
+                        builder: (_, state) => NewOfferScreen(
+                          propertySlug: state.uri.queryParameters['property'],
+                          propertyTitle: state.uri.queryParameters['title'],
+                        ),
+                      ),
+                      GoRoute(
+                        path: ':id',
+                        builder: (_, state) => OfferDetailScreen(id: _id(state)),
+                      ),
+                    ],
+                  ),
                   GoRoute(
                     path: 'leads',
                     builder: (_, _) => const LeadsScreen(),
                     routes: [
+                      GoRoute(path: 'new', builder: (_, _) => const NewLeadScreen()),
                       GoRoute(
                         path: ':id',
                         builder: (_, state) => LeadDetailScreen(id: _id(state)),
@@ -175,7 +225,19 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [GoRoute(path: Routes.messages, builder: (_, _) => const ConversationsScreen())],
           ),
           StatefulShellBranch(
-            routes: [GoRoute(path: Routes.profile, builder: (_, _) => const ProfileScreen())],
+            routes: [
+              GoRoute(
+                path: Routes.profile,
+                builder: (_, _) => const ProfileScreen(),
+                routes: [
+                  GoRoute(path: 'edit', builder: (_, _) => const EditProfileScreen()),
+                  GoRoute(path: 'password', builder: (_, _) => const ChangePasswordScreen()),
+                  GoRoute(path: 'security', builder: (_, _) => const SecurityScreen()),
+                  GoRoute(path: 'email-preferences', builder: (_, _) => const NotificationPreferencesScreen()),
+                  GoRoute(path: 'agent', builder: (_, _) => const MyAgentProfileScreen()),
+                ],
+              ),
+            ],
           ),
         ],
       ),

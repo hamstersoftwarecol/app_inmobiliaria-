@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/l10n/locale_controller.dart';
+import '../../../core/router/app_router.dart';
 import '../../auth/application/auth_controller.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -38,6 +40,23 @@ class ProfileScreen extends ConsumerWidget {
                   leading: Icon(user.mfaEnabled ? Icons.verified_user : Icons.shield_outlined),
                   title: Text(user.mfaEnabled ? l10n.t('mfaStatusOn') : l10n.t('mfaStatusOff')),
                 ),
+                const Divider(),
+                for (final (icon, key, route) in [
+                  (Icons.edit_outlined, 'editProfile', Routes.editProfile),
+                  (Icons.password, 'changePassword', Routes.changePassword),
+                  (Icons.security, 'security', Routes.security),
+                  (Icons.mark_email_read_outlined, 'emailPreferences', Routes.emailPreferences),
+                  if (user.can('agents.manage_own_profile'))
+                    (Icons.badge_outlined, 'myAgentProfile', Routes.myAgentProfile),
+                ])
+                  ListTile(
+                    key: Key('profile-$key'),
+                    leading: Icon(icon),
+                    title: Text(l10n.t(key)),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => context.push(route),
+                  ),
+                const Divider(),
                 ListTile(
                   leading: const Icon(Icons.language),
                   title: Text(l10n.t('language')),

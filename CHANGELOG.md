@@ -2,6 +2,14 @@
 
 All notable changes. Versions follow the API contract (`docs/api/openapi.yaml`).
 
+## Unreleased
+
+* **Mobile (Flutter):** new screens for offers (list, negotiation, record, counter, accept, reject,
+  withdraw), the agent directory and agent profiles, account settings (edit profile, change
+  password, two-factor setup and recovery codes, signed-in devices, e-mail preferences, account
+  closure) and agent tools (availability and time off, new lead, own agent profile and licence
+  submission). No API changes.
+
 ## 1.0.0-rc.1 — 2026-10-10
 
 Release candidate covering Sprints 1–12.

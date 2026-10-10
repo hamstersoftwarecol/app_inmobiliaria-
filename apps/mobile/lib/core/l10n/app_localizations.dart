@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import 'feature_strings.dart';
+import 'screen_strings.dart';
 
 /// Lightweight bilingual strings (en/es). Keys are shared with the web app's
 /// vocabulary so both clients speak the same language.
@@ -63,8 +64,9 @@ class AppLocalizations {
       'roles': 'Roles',
       'language': 'Language',
       'mfaStatusOn': 'Two-factor authentication is enabled.',
-      'mfaStatusOff': 'Two-factor authentication is not enabled. You can enable it from the web app.',
+      'mfaStatusOff': 'Two-factor authentication is not enabled. You can enable it in Profile › Security.',
       ...featureStringsEn,
+      ...screenStringsEn,
     },
     'es': {
       'appName': 'Hitlease Real Estate',
@@ -110,8 +112,9 @@ class AppLocalizations {
       'roles': 'Roles',
       'language': 'Idioma',
       'mfaStatusOn': 'La autenticación en dos pasos está activada.',
-      'mfaStatusOff': 'La autenticación en dos pasos no está activada. Puedes activarla desde la aplicación web.',
+      'mfaStatusOff': 'La autenticación en dos pasos no está activada. Puedes activarla en Perfil › Seguridad.',
       ...featureStringsEs,
+      ...screenStringsEs,
     },
   };
 

@@ -9,6 +9,7 @@ import '../../../core/util/format.dart';
 import '../../../shared/launch.dart';
 import '../../../shared/widgets/async_view.dart';
 import '../../auth/application/auth_controller.dart';
+import '../../offers/presentation/offers_screen.dart';
 import '../../favorites/presentation/favorite_button.dart';
 import '../../showings/presentation/request_showing_sheet.dart';
 import '../application/search_controller.dart';
@@ -123,6 +124,16 @@ class _Body extends ConsumerWidget {
                     final ok = await RequestShowingSheet.show(context, s.slug);
                     if (ok == true && context.mounted) showMessage(context, l10n.t('showingRequested'));
                   },
+                ),
+              if (user != null && canRecordOffers(user))
+                Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: OutlinedButton.icon(
+                    key: const Key('record-offer'),
+                    icon: const Icon(Icons.request_quote_outlined),
+                    label: Text(l10n.t('recordOffer')),
+                    onPressed: () => context.push(Routes.newOffer(propertySlug: s.slug, propertyTitle: s.title)),
+                  ),
                 ),
               if (property.listingAgent != null) ...[
                 const SizedBox(height: 12),

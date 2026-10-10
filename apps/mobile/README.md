@@ -20,7 +20,14 @@ development; release builds require HTTPS.
 Structure: `lib/core` (config, network, storage, router, theme, l10n),
 `lib/features/<feature>/{data,domain,application,presentation}`, `lib/shared/widgets`.
 
+Screens: search and listing detail, favorites, saved searches, showings, notifications,
+messages, transactions, offers (record, counter, accept, reject, withdraw), agent directory and
+profiles, account (profile, password, two-factor authentication, signed-in devices, e-mail
+preferences, account closure) and, for agents, leads, tasks, availability/time off and their own
+agent profile and licences.
+
+Web-only on purpose: administration (users, roles, agency, licence review, MLS, reports), listing
+management with photo uploads, transaction document uploads and e-mail address changes.
+
 Pending (see `docs/product-backlog.md`): Firebase Cloud Messaging (requires the
-agency's Firebase project files), Mapbox SDK (requires a Mapbox access token),
-property search/map/favorites/messages (depend on API modules of later sprints),
-agent-mode screens.
+agency's Firebase project files) and the map tab (requires a Mapbox access token).

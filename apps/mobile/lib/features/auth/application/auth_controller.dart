@@ -46,6 +46,18 @@ class AuthController extends AsyncNotifier<User?> {
     }
   }
 
+  /// Replaces the signed-in user after a profile or security change.
+  void updateUser(User user) => state = AsyncData(user);
+
+  /// Re-reads the user from the API (e.g. after enabling MFA).
+  Future<void> refreshUser() async => state = AsyncData(await ref.read(authRepositoryProvider).me());
+
+  /// Local sign-out after the account was closed server-side.
+  Future<void> signedOutRemotely() async {
+    await ref.read(tokenStorageProvider).clear();
+    state = const AsyncData(null);
+  }
+
   /// Invoked when the API rejects the token (expired/revoked elsewhere).
   void sessionExpired() => state = const AsyncData(null);
 
