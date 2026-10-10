@@ -14,7 +14,7 @@ export function HeroSearch() {
   const [query, setQuery] = useState("");
 
   return (
-    <form
+    <form method="post"
       role="search"
       className="mt-8 flex w-full max-w-2xl flex-col gap-2 rounded-lg bg-white p-2 shadow-lg sm:flex-row"
       onSubmit={(e) => {

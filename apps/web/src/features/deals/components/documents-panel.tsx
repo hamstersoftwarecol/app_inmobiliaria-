@@ -204,7 +204,7 @@ function UploadForm({ transactionId, maxKb, onUploaded }: { transactionId: numbe
   };
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-3 rounded-md border border-dashed border-border p-4" aria-label={t("documents.upload")}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-3 rounded-md border border-dashed border-border p-4" aria-label={t("documents.upload")}>
       {status && <Alert variant="danger">{status}</Alert>}
       <div className="grid gap-3 sm:grid-cols-2">
         <FormField id="doc-file" label={t("documents.file")} error={errors.file} hint={t("documents.fileHint", { mb: Math.round(maxKb / 1024) })}>

@@ -69,7 +69,7 @@ export function LoginForm() {
 
   return (
     <AuthCard title={t("auth.loginTitle")} description={t("auth.loginSubtitle")}>
-      <form onSubmit={onSubmit} noValidate className="space-y-4">
+      <form method="post" onSubmit={onSubmit} noValidate className="space-y-4">
         {formError && <Alert variant="danger">{formError}</Alert>}
 
         <FormField id="email" label={t("auth.email")} error={tv(errors.email?.message) ?? errors.email?.message}>

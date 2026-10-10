@@ -147,10 +147,19 @@ Uploads, offers and admin remain web-only for now (the app links to them).
 Charts use a validated single accent (`--color-chart`, checked for lightness, chroma and ≥3:1 contrast)
 and are drawn as plain SVG; there is no charting dependency.
 
-## Sprint 12 — Hardening & release candidate
+## Sprint 12 — Hardening & release candidate (delivered: 1.0.0-rc.1)
 
-Load tests on search, accessibility audit (WCAG 2.1 AA), ZAP baseline, backup/restore drill,
-observability (Sentry + OpenTelemetry), runbooks, MLS rule validation with each provider.
+| ID | Item | Pri | Status | Evidence |
+|---|---|---|---|---|
+| HRD-1 | Automated accessibility checks (axe, WCAG 2.1 A/AA) on public, buyer and staff pages | P0 | ✅ | E2E `accessibility.spec.ts`, `docs/security/accessibility.md` |
+| HRD-2 | OWASP ZAP baseline workflow (weekly/on demand) with documented accepted findings; findings fixed (PII in URLs on no-JS submit, API headers) | P0 | ✅ | `.github/workflows/security.yml`, `.zap/rules.tsv` |
+| HRD-3 | Readiness probe (DB/PostGIS, cache, storage; queue backlog and scheduler heartbeat), JSON log channel | P0 | ✅ | `HealthTest` |
+| HRD-4 | Load-test script (k6) for search with thresholds; local smoke run | P1 | ✅ | `infrastructure/load/search.js`, runbooks §4 |
+| HRD-5 | Backup/restore scripts and a recorded restore drill | P0 | ✅ | `infrastructure/scripts/{backup,restore}.sh`, runbooks §5 |
+| HRD-6 | Runbooks (release/rollback, incidents, monitoring), changelog | P0 | ✅ | `docs/operations/runbooks.md`, `CHANGELOG.md` |
+| HRD-7 | Capacity test on staging hardware with real inventory | P0 | ⛔ | Needs hosting and MLS data |
+| HRD-8 | Error tracking / tracing (Sentry, OpenTelemetry) | P1 | ⛔ | Needs a DSN / collector |
+| HRD-9 | Penetration test and legal review (copy, retention, MLS rules per provider) | P0 | ⛔ | External parties |
 
 ## AI module (post-MVP, P2)
 

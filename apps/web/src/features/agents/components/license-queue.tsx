@@ -45,7 +45,7 @@ export function VerifyLicenseForm({ license, onDone, onCancel }: { license: Agen
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-3 rounded-md bg-muted p-4" aria-label={t("licenses.verify")}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-3 rounded-md bg-muted p-4" aria-label={t("licenses.verify")}>
       <p className="text-sm text-muted-foreground">{t("licenses.verifyHelp")}</p>
       {formError && <Alert variant="danger">{formError}</Alert>}
       <FormField id={`source-${license.id}`} label={t("licenses.source")}>
@@ -106,7 +106,7 @@ export function ReasonForm({ action, license, onDone, onCancel }: { action: "rej
   };
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-3 rounded-md bg-muted p-4" aria-label={t(`licenses.${action}`)}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-3 rounded-md bg-muted p-4" aria-label={t(`licenses.${action}`)}>
       <FormField id={`reason-${license.id}`} label={t("licenses.reasonLabel")} error={error}>
         {(a11y) => <Textarea {...a11y} rows={2} value={reason} onChange={(e) => setReason(e.target.value)} />}
       </FormField>

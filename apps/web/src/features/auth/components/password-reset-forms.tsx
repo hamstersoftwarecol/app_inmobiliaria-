@@ -41,7 +41,7 @@ export function ForgotPasswordForm() {
       {message ? (
         <Alert variant="success">{message}</Alert>
       ) : (
-        <form onSubmit={onSubmit} noValidate className="space-y-4">
+        <form method="post" onSubmit={onSubmit} noValidate className="space-y-4">
           {formError && <Alert variant="danger">{formError}</Alert>}
           <FormField id="email" label={t("auth.email")} error={tv(errors.email?.message) ?? errors.email?.message}>
             {(a11y) => <Input type="email" autoComplete="email" {...a11y} {...form.register("email")} />}
@@ -90,7 +90,7 @@ export function ResetPasswordForm() {
       ) : message ? (
         <Alert variant="success">{message}</Alert>
       ) : (
-        <form onSubmit={onSubmit} noValidate className="space-y-4">
+        <form method="post" onSubmit={onSubmit} noValidate className="space-y-4">
           {formError && <Alert variant="danger">{formError}</Alert>}
           <FormField id="password" label={t("auth.newPassword")} hint={t("auth.passwordHint")} error={tv(errors.password?.message) ?? errors.password?.message}>
             {(a11y) => <Input type="password" autoComplete="new-password" {...a11y} {...form.register("password")} />}

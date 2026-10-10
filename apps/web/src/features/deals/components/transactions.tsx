@@ -198,7 +198,7 @@ function Milestones({ tx, onChange }: { tx: Transaction; onChange: (tx: Transact
         })}
       </ol>
       {manage && (
-        <form
+        <form method="post"
           className="flex flex-wrap items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
@@ -290,7 +290,7 @@ function Participants({ tx, onChange }: { tx: Transaction; onChange: (tx: Transa
         ))}
       </ul>
       {manage && (
-        <form onSubmit={add} noValidate className="grid gap-3 rounded-md border border-dashed border-border p-3 sm:grid-cols-2" aria-label={t("transactions.addParticipant")}>
+        <form method="post" onSubmit={add} noValidate className="grid gap-3 rounded-md border border-dashed border-border p-3 sm:grid-cols-2" aria-label={t("transactions.addParticipant")}>
           <FormField id="party-role" label={t("transactions.role")}>
             {(a) => (
               <Select {...a} value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value as ParticipantRole })}>

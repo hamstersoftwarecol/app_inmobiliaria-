@@ -72,7 +72,7 @@ function CreateAgentForm({ onCreated }: { onCreated: () => void }) {
   if (!candidates.data?.length) return <p className="text-sm text-muted-foreground">{t("adminAgents.noEligible")}</p>;
 
   return (
-    <form onSubmit={submit} className="grid gap-3 sm:grid-cols-4" aria-label={t("adminAgents.createTitle")}>
+    <form method="post" onSubmit={submit} className="grid gap-3 sm:grid-cols-4" aria-label={t("adminAgents.createTitle")}>
       {error && <Alert variant="danger" className="sm:col-span-4">{error}</Alert>}
       <FormField id="new-agent-user" label={t("adminAgents.user")}>
         {(a11y) => (

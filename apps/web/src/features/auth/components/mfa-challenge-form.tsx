@@ -46,7 +46,7 @@ export function MfaChallengeForm({ onSuccess, onExpired }: { onSuccess: (user: U
   };
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4">
+    <form method="post" onSubmit={submit} noValidate className="space-y-4">
       {formError && <Alert variant="danger">{formError}</Alert>}
       <FormField id="mfa-code" label={useRecovery ? t("auth.recoveryCode") : t("auth.mfaCode")} error={fieldError}>
         {(a11y) => (

@@ -45,7 +45,7 @@ export function NewLead() {
     <Card className="max-w-3xl">
       <CardHeader><CardTitle>{t("crm.createTitle")}</CardTitle></CardHeader>
       <CardContent>
-        <form onSubmit={submit} noValidate className="space-y-4" aria-label={t("crm.createTitle")}>
+        <form method="post" onSubmit={submit} noValidate className="space-y-4" aria-label={t("crm.createTitle")}>
           {error && <Alert variant="danger">{error}</Alert>}
           <FormField id="new-lead-source" label={t("crm.source")}>
             {(a) => (

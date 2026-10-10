@@ -136,7 +136,7 @@ function Composer({ onSend, autoFocus }: { onSend: (body: string) => Promise<unk
   };
 
   return (
-    <form onSubmit={submit} className="space-y-2" noValidate>
+    <form method="post" onSubmit={submit} className="space-y-2" noValidate>
       <Label htmlFor="message-body">{t("messages.body")}</Label>
       <Textarea
         id="message-body"

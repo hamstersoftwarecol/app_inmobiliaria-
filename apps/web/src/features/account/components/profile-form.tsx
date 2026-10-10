@@ -41,7 +41,7 @@ export function ProfileForm({ user }: { user: User }) {
   });
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form method="post" onSubmit={onSubmit} noValidate className="space-y-4">
       {status && <Alert variant={status.ok ? "success" : "danger"}>{status.message}</Alert>}
       <div className="grid gap-4 sm:grid-cols-2">
         <FormField id="first_name" label={t("auth.firstName")} error={tv(errors.first_name?.message) ?? errors.first_name?.message}>

@@ -103,6 +103,12 @@ the `api-media` volume (`MEDIA_DISK=public`) and nginx serves them read-only und
   is the intended production disk (blocked like media). Malware scanning: run ClamAV
   (`docker compose --profile antivirus up -d`, or a managed clamd) and set `DOCUMENT_SCANNER=clamd`,
   `CLAMD_HOST`, `CLAMD_PORT`; until then uploads are stored as `unscanned`.
+* Probes: liveness `GET /api/v1/health`, readiness `GET /api/v1/health/ready` (503 when the
+  database, cache or storage fails; `degraded` for queue backlog or a stale scheduler heartbeat).
+  Use readiness as the load-balancer health check and deploy gate. Set `LOG_CHANNEL=json` in
+  containers for one-line JSON logs with `request_id`.
+* Backups: managed PITR plus `infrastructure/scripts/backup.sh` (daily, encrypted off-site); restore
+  drills with `infrastructure/scripts/restore.sh` — see `docs/operations/runbooks.md`.
 * Observability: set `SENTRY_LARAVEL_DSN` / OTLP endpoint (integration scheduled for Sprint 12),
   alerts on 5xx rate, queue backlog, failed jobs, MLS sync staleness.
 * Mail: verified sender domain (SPF, DKIM, DMARC).

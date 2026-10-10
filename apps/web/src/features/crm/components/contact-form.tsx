@@ -62,7 +62,7 @@ export function ContactForm({ propertySlug, agentSlug, defaultIntent = "buy", ti
   if (status?.ok) return <Alert variant="success">{status.message}</Alert>;
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-3" aria-label={title}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-3" aria-label={title}>
       <h2 className="font-semibold text-brand-800">{title}</h2>
       {status && <Alert variant="danger">{status.message}</Alert>}
       <div className="grid gap-3 sm:grid-cols-2">

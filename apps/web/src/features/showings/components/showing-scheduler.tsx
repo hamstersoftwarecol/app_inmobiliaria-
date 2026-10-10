@@ -70,7 +70,7 @@ export function ShowingScheduler({ slug }: { slug: string }) {
   };
 
   return (
-    <form onSubmit={submit} className="space-y-3" aria-label={t("showings.scheduleTitle")}>
+    <form method="post" onSubmit={submit} className="space-y-3" aria-label={t("showings.scheduleTitle")}>
       <h2 className="font-semibold text-brand-800">{t("showings.scheduleTitle")}</h2>
       <SlotPicker
         slug={slug}

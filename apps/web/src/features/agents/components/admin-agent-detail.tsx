@@ -56,7 +56,7 @@ function StaffEditor({ agent, canManage }: { agent: Agent; canManage: boolean })
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4">
+    <form method="post" onSubmit={submit} noValidate className="space-y-4">
       {message && <Alert variant={message.ok ? "success" : "danger"}>{message.text}</Alert>}
       <fieldset disabled={!canManage} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">

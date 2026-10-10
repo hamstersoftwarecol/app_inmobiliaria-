@@ -35,7 +35,7 @@ export function ChangePasswordForm() {
   });
 
   return (
-    <form onSubmit={onSubmit} noValidate className="space-y-4">
+    <form method="post" onSubmit={onSubmit} noValidate className="space-y-4">
       {status && <Alert variant={status.ok ? "success" : "danger"}>{status.message}</Alert>}
       <FormField id="current_password" label={t("settings.currentPassword")} error={err(errors.current_password?.message)}>
         {(a11y) => <Input type="password" autoComplete="current-password" {...a11y} {...form.register("current_password")} />}

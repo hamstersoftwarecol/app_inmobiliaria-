@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hitlease Real Estate API
-  version: 1.0.0-alpha.8
+  version: 1.0.0-rc.1
   summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
   description: |
     Central API consumed by the Next.js web app and the Flutter mobile app.
@@ -91,6 +91,23 @@ paths:
                 properties:
                   status: { type: string, const: ok }
                   version: { type: string, examples: [v1] }
+  /health/ready:
+    get:
+      tags: [System]
+      operationId: readiness
+      summary: "Readiness: database (with PostGIS), cache and storage must work; queue backlog and scheduler heartbeat are reported as degraded. Not rate-limited; reveals no details"
+      security: []
+      responses:
+        "200":
+          description: Ready (status ok or degraded)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "503":
+          description: Not ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
 
   /auth/register:
     post:
@@ -5019,3 +5036,18 @@ components:
                   showings: { type: integer }
                   offers: { type: integer }
                   closings: { type: integer }
+
+    Readiness:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded, fail] }
+        checks:
+          type: object
+          properties:
+            database: { type: string, enum: [ok, fail] }
+            cache: { type: string, enum: [ok, fail] }
+            storage: { type: string, enum: [ok, fail] }
+            queue: { type: string, enum: [ok, degraded, fail] }
+            scheduler: { type: string, enum: [ok, degraded] }
+        queue_backlog: { type: [integer, "null"] }
+        scheduler_heartbeat_age_seconds: { type: [integer, "null"] }

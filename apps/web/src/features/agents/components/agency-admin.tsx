@@ -50,7 +50,7 @@ function AgencyForm({ agency, canManage, onSaved }: { agency: Agency | null; can
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4">
+    <form method="post" onSubmit={submit} noValidate className="space-y-4">
       {message && <Alert variant={message.ok ? "success" : "danger"}>{message.text}</Alert>}
       <fieldset disabled={!canManage} className="grid gap-4 sm:grid-cols-2">
         <FormField id="agency-name" label={t("agency.name")} error={err(errors.name?.message)}>
@@ -133,7 +133,7 @@ function OfficeForm({ agencyId, onSaved }: { agencyId: number; onSaved: () => vo
   );
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4" aria-label={t("agency.addOffice")}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-4" aria-label={t("agency.addOffice")}>
       <h3 className="font-semibold text-brand-800">{t("agency.addOffice")}</h3>
       {message && <Alert variant="danger">{message}</Alert>}
       <div className="grid gap-4 sm:grid-cols-2">

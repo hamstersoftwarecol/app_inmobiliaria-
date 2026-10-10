@@ -100,7 +100,7 @@ export function PropertyForm({ property, onSaved }: Props) {
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-5" aria-label={property ? t("manageListings.editTitle") : t("manageListings.createTitle")}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-5" aria-label={property ? t("manageListings.editTitle") : t("manageListings.createTitle")}>
       {status && <Alert variant={status.ok ? "success" : "danger"}>{status.message}</Alert>}
 
       <FormField id="p-title" label={t("manageListings.titleLabel")} error={err("title")}>

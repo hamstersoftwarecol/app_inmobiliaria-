@@ -138,7 +138,7 @@ export function NewUserForm() {
         <CardTitle>{t("adminUsers.createTitle")}</CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={submit} noValidate className="space-y-5" aria-label={t("adminUsers.createTitle")}>
+        <form method="post" onSubmit={submit} noValidate className="space-y-5" aria-label={t("adminUsers.createTitle")}>
           {error && <Alert variant="danger">{error}</Alert>}
           <ProfileFields register={form.register} errors={form.formState.errors} />
           <FormField
@@ -195,7 +195,7 @@ function ProfileCard({ user, onSaved }: { user: User; onSaved: (u: User) => void
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4" aria-label={t("adminUsers.profile")}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-4" aria-label={t("adminUsers.profile")}>
       {status && <Alert variant={status.ok ? "success" : "danger"}>{status.message}</Alert>}
       <ProfileFields register={form.register} errors={form.formState.errors} />
       <Button type="submit" loading={form.formState.isSubmitting}>

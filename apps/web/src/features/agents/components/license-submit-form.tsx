@@ -41,7 +41,7 @@ export function LicenseSubmitForm({ onSubmit, title }: { onSubmit: (input: Licen
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4" aria-label={title}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-4" aria-label={title}>
       <h3 className="font-semibold text-brand-800">{title}</h3>
       {status && <Alert variant={status.ok ? "success" : "danger"}>{status.message}</Alert>}
       <div className="grid gap-4 sm:grid-cols-2">

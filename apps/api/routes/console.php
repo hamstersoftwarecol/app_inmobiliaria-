@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Api\V1\System\HealthController;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schedule;
 
@@ -47,3 +49,7 @@ Schedule::command('hitlease:transactions:milestone-reminders')
     ->onOneServer();
 // Document retention purge is NOT scheduled: run `hitlease:documents:purge` (dry run) and add
 // --force only after counsel confirms the retention period.
+
+// Heartbeat read by /health/ready: proves the scheduler is running.
+Schedule::call(fn () => Cache::put(HealthController::HEARTBEAT_KEY, now()->getTimestamp(), 600))
+    ->name('scheduler:heartbeat')->everyMinute()->onOneServer();

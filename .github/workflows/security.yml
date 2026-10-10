@@ -1,0 +1,85 @@
+name: Security scan
+
+# OWASP ZAP baseline (passive) against the full stack, weekly and on demand. Accepted findings and
+# their justification live in .zap/rules.tsv; anything new fails the run.
+on:
+  schedule:
+    - cron: "17 6 * * 1" # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PHP_VERSION: "8.3"
+  NODE_VERSION: "22"
+
+jobs:
+  zap-baseline:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:16-3.4
+        env:
+          POSTGRES_DB: hitlease
+          POSTGRES_USER: hitlease
+          POSTGRES_PASSWORD: hitlease
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U hitlease -d hitlease"
+          --health-interval 5s --health-retries 20
+      redis:
+        image: redis:7.4-alpine
+        ports: ["6379:6379"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: pdo_pgsql, pgsql, redis, intl, zip, bcmath, gd
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+      - name: Start API (fictitious data only)
+        working-directory: apps/api
+        run: |
+          composer install --no-interaction --prefer-dist --no-progress
+          cp .env.example .env
+          sed -i 's/^DB_PASSWORD=$/DB_PASSWORD=hitlease/' .env
+          echo "QUEUE_CONNECTION=sync" >> .env
+          echo "MAIL_MAILER=log" >> .env
+          php artisan key:generate
+          php artisan migrate --force --seed
+          php artisan db:seed --class=E2ESeeder --force
+          php -d expose_php=0 artisan serve --port=8000 > /tmp/api.log 2>&1 &
+      - name: Start web
+        working-directory: apps/web
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:8000
+          NEXT_PUBLIC_SITE_URL: http://localhost:3000
+        run: |
+          npm ci
+          npm run build
+          npx next start --port 3000 > /tmp/web.log 2>&1 &
+          for i in $(seq 1 60); do curl -fs http://localhost:3000 >/dev/null && break; sleep 1; done
+      - name: ZAP baseline (web)
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://localhost:3000
+          rules_file_name: .zap/rules.tsv
+          cmd_options: "-m 3"
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-web
+      - name: ZAP baseline (API)
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: http://localhost:8000/api/v1/properties
+          rules_file_name: .zap/rules.tsv
+          cmd_options: "-m 1"
+          allow_issue_writing: false
+          fail_action: true
+          artifact_name: zap-api

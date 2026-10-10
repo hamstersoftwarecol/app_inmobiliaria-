@@ -39,6 +39,11 @@ return [
         'max_days_ahead' => (int) env('SHOWING_MAX_DAYS_AHEAD', 30),
     ],
 
+    'health' => [
+        // Readiness reports "degraded" above this many pending jobs across all queues.
+        'max_queue_backlog' => (int) env('HEALTH_MAX_QUEUE_BACKLOG', 1000),
+    ],
+
     'documents' => [
         // Private disk (never web-served). Cloudflare R2 replaces it once the bucket exists.
         'disk' => env('DOCUMENTS_DISK', 'local'),

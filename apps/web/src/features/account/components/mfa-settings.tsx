@@ -60,7 +60,7 @@ export function MfaSettings({ user }: { user: User }) {
       )}
 
       {step === "password" && (
-        <form
+        <form method="post"
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
@@ -88,7 +88,7 @@ export function MfaSettings({ user }: { user: User }) {
       )}
 
       {step === "scan" && setup && (
-        <form
+        <form method="post"
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();
@@ -137,7 +137,7 @@ export function MfaSettings({ user }: { user: User }) {
       )}
 
       {step === "disable" && (
-        <form
+        <form method="post"
           className="space-y-3"
           onSubmit={(e) => {
             e.preventDefault();

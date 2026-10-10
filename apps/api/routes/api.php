@@ -35,14 +35,20 @@ use App\Http\Controllers\Api\V1\Public\PropertyController;
 use App\Http\Controllers\Api\V1\Showings\AppointmentController;
 use App\Http\Controllers\Api\V1\Showings\AvailabilityController;
 use App\Http\Controllers\Api\V1\Showings\ShowingSlotController;
+use App\Http\Controllers\Api\V1\System\HealthController;
 use Illuminate\Support\Facades\Route;
 
 /*
 | Hitlease Real Estate REST API — v1. Contract: docs/api/openapi.yaml
 */
-Route::prefix('v1')->middleware('throttle:api')->group(function () {
+// Probes stay outside the rate limiter (which needs the cache): readiness must answer even when
+// a dependency is down. Both are cheap and reveal no details.
+Route::prefix('v1')->group(function () {
+    Route::get('/health', [HealthController::class, 'live'])->name('health');
+    Route::get('/health/ready', [HealthController::class, 'ready'])->name('health.ready');
+});
 
-    Route::get('/health', fn () => response()->json(['status' => 'ok', 'version' => 'v1']))->name('health');
+Route::prefix('v1')->middleware('throttle:api')->group(function () {
 
     // ---------------------------------------------------------------- Public directory
     Route::get('/agents', [AgentDirectoryController::class, 'index'])->name('agents.index');

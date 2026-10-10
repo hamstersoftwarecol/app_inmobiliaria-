@@ -174,6 +174,16 @@ defaults when a role is first created; the super admin role always gets everythi
   period), responses are `private, no-store`, rate-limited (20/min), and cells starting with
   `= + - @` (non-numeric) are prefixed to stop spreadsheet formula injection.
 
+### Hardening (Sprint 12)
+
+* All JavaScript-driven forms use `method="post"`, so a submission before hydration never puts
+  personal data in URLs (found by ZAP). API responses carry `form-action 'none'; base-uri 'none'` in
+  their CSP and never `X-Powered-By`.
+* Accepted ZAP findings: readable `XSRF-TOKEN` cookie (Sanctum design; the session cookie is
+  HttpOnly); `img-src https:` for MLS-hosted photos; `'unsafe-inline'` scripts/styles required by
+  Next.js without nonces (to revisit with nonce-based CSP); false positives on framework bundles.
+* Health probes reveal no hosts, versions or errors.
+
 ## 3. Planned controls (by sprint)
 
 | Sprint | Control |
@@ -181,7 +191,7 @@ defaults when a role is first created; the super admin role always gets everythi
 | 4 | R2 storage for media (private bucket for documents), malware scanning for uploads |
 | 9 | ✅ Delivered (see above); ClamAV deployment and R2 private bucket remain blocked on infrastructure |
 | 11 | ✅ Audit viewer (Sprint 4) and audited exports; ⏳ alerting on suspicious security events (needs the monitoring stack, Sprint 12) |
-| 12 | DAST (OWASP ZAP baseline) in CI, dependency/license review, backup restore drills, penetration test |
+| 12 | ✅ ZAP baseline workflow, dependency audits in CI, restore drill, axe checks; ⛔ penetration test (external) |
 
 ## 4. Real-estate compliance considerations (require specialist review)
 

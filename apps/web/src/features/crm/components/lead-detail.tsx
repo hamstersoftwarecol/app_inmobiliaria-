@@ -80,7 +80,7 @@ function DetailsCard({ lead, canUpdate }: { lead: Lead; canUpdate: boolean }) {
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4" aria-label={t("crm.details")}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-4" aria-label={t("crm.details")}>
       {status && <Alert variant={status.ok ? "success" : "danger"}>{status.message}</Alert>}
       <LeadFormFields register={form.register} errors={form.formState.errors} idPrefix="lead" />
       <Button type="submit" loading={form.formState.isSubmitting}>{t("crm.save")}</Button>
@@ -168,7 +168,7 @@ function ActivityForm({ lead }: { lead: Lead }) {
   };
 
   return (
-    <form onSubmit={submit} className="space-y-3" aria-label={t("crm.logActivity")}>
+    <form method="post" onSubmit={submit} className="space-y-3" aria-label={t("crm.logActivity")}>
       {status && <Alert variant={status.ok ? "success" : "danger"}>{status.message}</Alert>}
       <div className="grid gap-3 sm:grid-cols-[10rem_1fr]">
         <div className="space-y-1">
@@ -225,7 +225,7 @@ function AddTask({ lead }: { lead: Lead }) {
   });
   const err = (m?: string) => (m ? tv(m) : undefined);
   return (
-    <form onSubmit={submit} noValidate className="space-y-3" aria-label={t("crm.addTask")}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-3" aria-label={t("crm.addTask")}>
       {error && <Alert variant="danger">{error}</Alert>}
       <FormField id="task-title" label={t("crm.taskTitle")} error={err(form.formState.errors.title?.message)}>
         {(a) => <Input {...a} {...form.register("title")} maxLength={200} />}

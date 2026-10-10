@@ -138,7 +138,7 @@ function TimeOffCard({ data }: { data: Availability }) {
           ))}
         </ul>
       )}
-      <form onSubmit={add} className="grid gap-3 sm:grid-cols-3" aria-label={t("availability.addTimeOff")}>
+      <form method="post" onSubmit={add} className="grid gap-3 sm:grid-cols-3" aria-label={t("availability.addTimeOff")}>
         {error && <Alert variant="danger" className="sm:col-span-3">{error}</Alert>}
         <div className="space-y-1">
           <Label htmlFor="off-start">{t("availability.start")}</Label>

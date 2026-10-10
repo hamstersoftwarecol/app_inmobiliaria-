@@ -54,7 +54,7 @@ export function RegisterForm() {
 
   return (
     <AuthCard title={t("auth.registerTitle")} description={t("auth.registerSubtitle")}>
-      <form onSubmit={onSubmit} noValidate className="space-y-4">
+      <form method="post" onSubmit={onSubmit} noValidate className="space-y-4">
         {formError && <Alert variant="danger">{formError}</Alert>}
         <div className="grid gap-4 sm:grid-cols-2">
           <FormField id="first_name" label={t("auth.firstName")} error={err(errors.first_name?.message)}>

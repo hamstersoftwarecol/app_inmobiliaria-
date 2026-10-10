@@ -192,7 +192,7 @@ function OfferForm({ offer, onSaved }: { offer?: Offer; onSaved: (offer: Offer) 
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-5" aria-label={offer ? t("offers.edit") : t("offers.new")}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-5" aria-label={offer ? t("offers.edit") : t("offers.new")}>
       {status && <Alert variant="danger">{status}</Alert>}
       {!offer &&
         (propertyTitle ? (
@@ -326,7 +326,7 @@ function CounterForm({ offer, onDone }: { offer: Offer; onDone: () => Promise<un
     }
   });
   return (
-    <form onSubmit={submit} noValidate className="space-y-4 rounded-md border border-border p-4" aria-label={t("offers.counter")}>
+    <form method="post" onSubmit={submit} noValidate className="space-y-4 rounded-md border border-border p-4" aria-label={t("offers.counter")}>
       {status && <Alert variant="danger">{status}</Alert>}
       <OfferTermsFields prefix="counter" register={form.register} control={form.control} errors={form.formState.errors} financing={form.watch("financing")} />
       <FormField id="counter-note" label={t("offers.note")}>

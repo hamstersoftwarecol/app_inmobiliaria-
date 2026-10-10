@@ -78,7 +78,7 @@ export function SaveSearchButton({ filters }: { filters: SearchFilters }) {
   };
 
   return (
-    <form onSubmit={save} className="flex flex-wrap items-end gap-2" aria-label={t("properties.saveSearch")}>
+    <form method="post" onSubmit={save} className="flex flex-wrap items-end gap-2" aria-label={t("properties.saveSearch")}>
       <div className="space-y-1">
         <Label htmlFor="save-search-name">{t("properties.saveSearchName")}</Label>
         <Input id="save-search-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={100} className="h-8 w-64" />

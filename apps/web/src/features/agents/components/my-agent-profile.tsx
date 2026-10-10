@@ -43,7 +43,7 @@ function ProfileEditor({ agent }: { agent: Agent }) {
   });
 
   return (
-    <form onSubmit={submit} noValidate className="space-y-4">
+    <form method="post" onSubmit={submit} noValidate className="space-y-4">
       {status && <Alert variant={status.ok ? "success" : "danger"}>{status.message}</Alert>}
       <AgentProfileFields control={form.control} register={form.register} errors={form.formState.errors} />
       <Button type="submit" loading={form.formState.isSubmitting}>
