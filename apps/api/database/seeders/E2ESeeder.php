@@ -46,6 +46,11 @@ class E2ESeeder extends Seeder
         };
 
         $user('e2e.broker@example.com', 'Erin', 'Broker', RoleName::Broker, mfa: true);
+        $buyer = $user('e2e.buyer@example.com', 'Bianca', 'Buyer', RoleName::Buyer);
+        $buyer->favoriteProperties()->detach();
+        $buyer->savedSearches()->delete();
+        // Users created through the admin UI by earlier runs.
+        User::withTrashed()->where('email', 'like', 'e2e.created.%@example.com')->forceDelete();
 
         $agency = Agency::query()->updateOrCreate(['slug' => 'e2e-realty'], ['name' => 'E2E Test Realty', 'license_number' => 'TEST-BROKERAGE']);
         $office = Office::query()->updateOrCreate(['agency_id' => $agency->id, 'slug' => 'e2e-office'], [
@@ -76,13 +81,14 @@ class E2ESeeder extends Seeder
         $valeria = Agent::query()->where('slug', 'e2e-valeria-verified')->firstOrFail();
         $type = PropertyType::query()->where('code', 'single_family')->value('id');
         foreach ([
-            ['slug' => 'e2e-12-example-lane-hoboken', 'title' => 'E2E published colonial', 'published' => true, 'street' => '12 Example Lane'],
-            ['slug' => 'e2e-draft-34-sample-street', 'title' => 'E2E draft townhouse', 'published' => false, 'street' => '34 Sample Street'],
+            ['slug' => 'e2e-12-example-lane-hoboken', 'title' => 'E2E published colonial', 'published' => true, 'street' => '12 Example Lane', 'lat' => 40.7440, 'lng' => -74.0324],
+            ['slug' => 'e2e-draft-34-sample-street', 'title' => 'E2E draft townhouse', 'published' => false, 'street' => '34 Sample Street', 'lat' => 40.7452, 'lng' => -74.0301],
         ] as $row) {
             Property::query()->withTrashed()->updateOrCreate(['slug' => $row['slug']], [
                 'source' => 'internal', 'title' => $row['title'], 'listing_type' => 'sale', 'status' => 'active',
                 'property_type_id' => $type, 'list_price' => 650000, 'street_address' => $row['street'], 'city' => 'Hoboken',
                 'county' => 'Hudson', 'state' => 'NJ', 'postal_code' => '07030', 'bedrooms' => 3, 'bathrooms' => 2,
+                'latitude' => $row['lat'], 'longitude' => $row['lng'], 'address_display' => true,
                 'living_area_sqft' => 1800, 'description' => 'Fictitious listing used by automated tests.',
                 'listing_agent_id' => $valeria->id, 'agency_id' => $agency->id,
                 'is_published' => $row['published'], 'published_at' => $row['published'] ? now() : null, 'deleted_at' => null,

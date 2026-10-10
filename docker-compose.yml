@@ -78,6 +78,8 @@ services:
       # Server-side (SSR) requests stay on the Compose network: `api.localhost`
       # would resolve to the web container's own loopback.
       API_INTERNAL_URL: http://api-internal
+      # Same secret as the API's API_SSR_KEY: SSR requests are rate-limited per visitor.
+      API_SSR_KEY: ${API_SSR_KEY:-}
     restart: unless-stopped
 
   nginx:

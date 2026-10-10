@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { useTranslation } from "@/hooks/use-translation";
 import { formatNumber, formatPrice } from "@/lib/format";
 import type { PublicPropertySummary } from "@/types/api";
+import { FavoriteButton } from "./favorite-button";
 
 export function PropertyCard({ property }: { property: PublicPropertySummary }) {
   const { t, locale } = useTranslation();
@@ -13,7 +14,7 @@ export function PropertyCard({ property }: { property: PublicPropertySummary }) 
   const where = [a.street_address, a.city, a.state].filter(Boolean).join(", ");
 
   return (
-    <li className="overflow-hidden rounded-lg border border-border bg-white shadow-sm">
+    <li className="relative overflow-hidden rounded-lg border border-border bg-white shadow-sm">
       <Link href={`/properties/${property.slug}`} className="group block focus-visible:outline-offset-[-2px]">
         <div className="relative aspect-[4/3] bg-muted">
           {property.cover_photo ? (
@@ -44,6 +45,7 @@ export function PropertyCard({ property }: { property: PublicPropertySummary }) 
           {property.compliance?.attribution && <p className="truncate text-xs text-muted-foreground">{property.compliance.attribution}</p>}
         </div>
       </Link>
+      <FavoriteButton slug={property.slug} title={property.title} className="absolute right-3 top-3" />
     </li>
   );
 }

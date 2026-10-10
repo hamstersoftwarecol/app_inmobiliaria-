@@ -311,3 +311,44 @@ export interface MlsStatus {
   }[];
   duplicate_candidates: { address_key: string; property_ids: string; providers: number }[];
 }
+
+export interface LocationSuggestion {
+  type: "city" | "postal_code";
+  label: string;
+  city: string | null;
+  county: string | null;
+  state: string;
+  postal_code: string | null;
+  listings: number;
+  center: { latitude: number; longitude: number } | null;
+}
+
+export type AlertFrequency = "off" | "daily" | "weekly";
+
+export interface SavedSearch {
+  id: number;
+  name: string;
+  filters: Record<string, string | number | string[]>;
+  sort: string | null;
+  alert_frequency: AlertFrequency;
+  last_alerted_at: string | null;
+  created_at: string;
+}
+
+export type AuditCategory = "security" | "admin" | "data" | "mls";
+
+export interface AuditLogEntry {
+  id: number;
+  category: AuditCategory;
+  event: string;
+  user: { id: number; full_name: string; email: string } | null;
+  auditable_type: string | null;
+  auditable_id: number | null;
+  old_values: Record<string, unknown> | null;
+  new_values: Record<string, unknown> | null;
+  metadata: Record<string, unknown> | null;
+  ip_address: string | null;
+  user_agent: string | null;
+  request_id: string | null;
+  created_at: string;
+}

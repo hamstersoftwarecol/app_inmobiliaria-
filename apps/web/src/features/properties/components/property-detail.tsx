@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useTranslation } from "@/hooks/use-translation";
 import { formatNumber, formatPrice } from "@/lib/format";
 import type { PublicProperty } from "@/types/api";
+import { FavoriteButton } from "./favorite-button";
 
 function Gallery({ photos, title }: { photos: PublicProperty["photos"]; title: string }) {
   const { t } = useTranslation();
@@ -77,7 +78,10 @@ export function PropertyDetail({ property }: { property: PublicProperty }) {
               {property.property_type && <Badge className="bg-muted text-foreground">{property.property_type.name}</Badge>}
             </div>
             <p className="text-3xl font-bold text-brand-800">{formatPrice(property.list_price, locale, property.listing_type)}</p>
-            <h1 className="text-xl font-semibold">{property.title}</h1>
+            <div className="flex items-start justify-between gap-3">
+              <h1 className="text-xl font-semibold">{property.title}</h1>
+              <FavoriteButton slug={property.slug} title={property.title} className="border border-border" />
+            </div>
             <p className="text-muted-foreground">
               {a.displayed && a.street_address ? `${a.street_address}${a.unit ? `, ${a.unit}` : ""}, ` : ""}
               {[a.city, a.state, a.postal_code].filter(Boolean).join(", ")}

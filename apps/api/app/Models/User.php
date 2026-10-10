@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -76,6 +77,22 @@ class User extends Authenticatable implements MustVerifyEmail
     public function agentProfile(): HasOne
     {
         return $this->hasOne(Agent::class);
+    }
+
+    /**
+     * @return BelongsToMany<Property, $this>
+     */
+    public function favoriteProperties(): BelongsToMany
+    {
+        return $this->belongsToMany(Property::class, 'favorites')->withPivot('created_at');
+    }
+
+    /**
+     * @return HasMany<SavedSearch, $this>
+     */
+    public function savedSearches(): HasMany
+    {
+        return $this->hasMany(SavedSearch::class);
     }
 
     public function hasRole(RoleName|string ...$roles): bool

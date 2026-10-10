@@ -1,10 +1,19 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { ApiError } from "@/lib/api-client";
+import { authService } from "@/services/auth-service";
 import { PropertyDetail } from "@/features/properties/components/property-detail";
 import { formatPrice } from "@/lib/format";
 import { searchHref } from "@/lib/search";
 import type { PublicProperty } from "@/types/api";
 import { propertySchema, toPropertyPayload, type PropertyValues } from "@/validations/property";
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useSearchParams: () => new URLSearchParams(),
+  usePathname: () => "/properties/x",
+}));
 
 const values: PropertyValues = {
   title: "Sunny colonial", listing_type: "sale", status: "active", property_type_id: "2", list_price: "650000",
@@ -57,8 +66,15 @@ const mlsProperty: PublicProperty = {
 };
 
 describe("PropertyDetail", () => {
-  it("shows MLS attribution and disclaimer and hides a suppressed address", () => {
-    render(<PropertyDetail property={mlsProperty} />);
+  it("shows MLS attribution and disclaimer and hides a suppressed address", async () => {
+    vi.spyOn(authService, "me").mockRejectedValue(new ApiError(401, "unauthenticated", "Unauthenticated."));
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <PropertyDetail property={mlsProperty} />
+      </QueryClientProvider>,
+    );
+    // Guests are invited to sign in to save favorites.
+    expect(await screen.findByRole("link", { name: "Sign in to save searches and favorites" })).toHaveAttribute("href", "/login?next=%2Fproperties%2Fx");
     expect(screen.getByText("Listing courtesy of Example Brokerage")).toBeInTheDocument();
     expect(screen.getByText("Deemed reliable, not guaranteed.")).toBeInTheDocument();
     expect(screen.getByText(/Source: Test MLS · MLS# ML-1/)).toBeInTheDocument();

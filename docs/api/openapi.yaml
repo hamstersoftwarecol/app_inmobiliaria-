@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hitlease Real Estate API
-  version: 1.0.0-alpha.3
+  version: 1.0.0-alpha.4
   summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
   description: |
     Central API consumed by the Next.js web app and the Flutter mobile app.
@@ -50,7 +50,7 @@ tags:
   - name: Admin MLS Sync
     description: MLS sync jobs, monitoring and field mappings.
   - name: Search
-    description: Planned (Sprint 5).
+    description: Location autocomplete, favorites and saved searches with e-mail alerts.
   - name: Agents
     description: Public agent directory (only verified, opted-in agents).
   - name: Agent Self-Service
@@ -771,8 +771,8 @@ paths:
         - { name: category, in: query, schema: { type: string, enum: [security, admin, data, mls] } }
         - { name: event, in: query, description: Prefix match, schema: { type: string } }
         - { name: user_id, in: query, schema: { type: integer } }
-        - { name: from, in: query, schema: { type: string, format: date-time } }
-        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: from, in: query, description: "Date (agency calendar day, America/New_York, from 00:00) or date-time", schema: { type: string, examples: ["2026-10-01"] } }
+        - { name: to, in: query, description: "Date (whole agency calendar day included) or date-time; must be ≥ from", schema: { type: string, examples: ["2026-10-10"] } }
         - $ref: "#/components/parameters/Page"
         - $ref: "#/components/parameters/PerPage"
       responses:
@@ -970,6 +970,146 @@ paths:
                 type: object
                 properties:
                   data: { $ref: "#/components/schemas/PublicAgent" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /me/favorites:
+    get:
+      tags: [Search]
+      operationId: listFavorites
+      summary: Favorite listings that are publicly visible now (`favorites.manage`)
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - $ref: "#/components/parameters/Page"
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 48 } }
+      responses:
+        "200":
+          description: Paginated listing cards, most recently saved first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/PublicPropertySummary" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /me/favorites/slugs:
+    get:
+      tags: [Search]
+      operationId: listFavoriteSlugs
+      summary: Slugs of visible favorites (to mark result cards)
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+      responses:
+        "200":
+          description: Slugs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { type: string } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /me/favorites/{slug}:
+    parameters:
+      - { name: slug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }
+    put:
+      tags: [Search]
+      operationId: addFavorite
+      summary: Save a publicly visible listing (idempotent; max 500, `favorites_limit_reached`)
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+      responses:
+        "204": { description: Saved }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Search]
+      operationId: removeFavorite
+      summary: Remove a favorite (works even if the listing is no longer public)
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /me/saved-searches:
+    get:
+      tags: [Search]
+      operationId: listSavedSearches
+      summary: Own saved searches (`saved_searches.manage`)
+      responses:
+        "200":
+          description: Saved searches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/SavedSearch" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Search]
+      operationId: createSavedSearch
+      summary: Save a search (max 25, `saved_search_limit_reached`)
+      description: |
+        `filters` accepts exactly the `GET /properties` filters (validated with the same rules; at least one
+        is required). Alerts cover listings published after the search is saved and are sent daily (07:45)
+        or weekly (Mondays 07:50) America/New_York; e-mail only to verified addresses, in-app always.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SavedSearchInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/SavedSearch" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /me/saved-searches/{savedSearch}:
+    parameters:
+      - { name: savedSearch, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [Search]
+      operationId: updateSavedSearch
+      summary: Rename, change filters or alert frequency (owner only; others get 404)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SavedSearchInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/SavedSearch" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Search]
+      operationId: deleteSavedSearch
+      summary: Delete a saved search
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /me/agent-profile:
@@ -1435,21 +1575,40 @@ paths:
     get:
       tags: [Properties]
       operationId: listProperties
-      summary: Browse public listings
+      summary: Search public listings
       description: |
-        Basic browsing; geographic search arrives with the search module. Send `X-Hitlease-Client: mobile`
-        from the mobile app so MLS listings whose licence forbids mobile display are excluded.
+        Attribute filters plus one geographic filter (`bbox`, `lat`+`lng`+`radius_miles`, or `polygon`).
+        Geographic filters only match listings whose exact location is public (`address.displayed`), so
+        narrowing an area never reveals a suppressed address. Rate limited by the `search` limiter
+        (60/min per user or visitor). Send `X-Hitlease-Client: mobile` from the mobile app so MLS listings
+        whose licence forbids mobile display are excluded.
       security: []
       parameters:
         - $ref: "#/components/parameters/ClientChannel"
         - { name: listing_type, in: query, schema: { type: string, enum: [sale, rent] } }
         - { name: property_type, in: query, schema: { $ref: "#/components/schemas/PropertyTypeCode" } }
-        - { name: city, in: query, schema: { type: string } }
+        - { name: city, in: query, description: Case-insensitive exact match, schema: { type: string, maxLength: 100 } }
+        - { name: county, in: query, description: Case-insensitive exact match, schema: { type: string, maxLength: 100 } }
         - { name: postal_code, in: query, schema: { type: string, pattern: "^\\d{5}$" } }
         - { name: min_price, in: query, schema: { type: number, minimum: 0 } }
-        - { name: max_price, in: query, schema: { type: number, minimum: 0 } }
-        - { name: min_beds, in: query, schema: { type: integer, minimum: 0 } }
-        - { name: sort, in: query, schema: { type: string, enum: [newest, price_asc, price_desc], default: newest } }
+        - { name: max_price, in: query, description: Must be ≥ min_price, schema: { type: number, minimum: 0 } }
+        - { name: min_beds, in: query, schema: { type: integer, minimum: 0, maximum: 20 } }
+        - { name: min_baths, in: query, schema: { type: number, minimum: 0, maximum: 20 } }
+        - { name: min_sqft, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: max_sqft, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: min_year, in: query, schema: { type: integer, minimum: 1600, maximum: 2100 } }
+        - name: "amenities[]"
+          in: query
+          description: All listed amenities must be present (max 10).
+          style: form
+          explode: true
+          schema: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/Amenity" } }
+        - { name: bbox, in: query, description: "\"west,south,east,north\" in degrees (WGS84). Cannot be combined with polygon or radius.", schema: { type: string, examples: ["-74.06,40.70,-74.00,40.76"] } }
+        - { name: lat, in: query, description: Centre latitude (with lng and radius_miles), schema: { type: number, minimum: -90, maximum: 90 } }
+        - { name: lng, in: query, description: Centre longitude, schema: { type: number, minimum: -180, maximum: 180 } }
+        - { name: radius_miles, in: query, schema: { type: number, exclusiveMinimum: 0, maximum: 50 } }
+        - { name: polygon, in: query, description: "3–50 \"lng lat\" points separated by commas (ring closed automatically)", schema: { type: string, maxLength: 2000, examples: ["-74.20 40.70,-74.14 40.70,-74.17 40.77"] } }
+        - { name: sort, in: query, description: "`distance` requires a radius search; otherwise newest is used", schema: { type: string, enum: [newest, price_asc, price_desc, sqft_desc, distance], default: newest } }
         - $ref: "#/components/parameters/Page"
         - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 48 } }
       responses:
@@ -1464,6 +1623,29 @@ paths:
                     properties:
                       data: { type: array, items: { $ref: "#/components/schemas/PublicPropertySummary" } }
         "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /locations:
+    get:
+      tags: [Search]
+      operationId: autocompleteLocations
+      summary: Cities and ZIP codes that currently have public listings
+      description: Digits are matched as a ZIP prefix, text as a city prefix. `center` is computed only from listings with a public location.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 60 } }
+      responses:
+        "200":
+          description: Up to 8 suggestions, most listings first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/LocationSuggestion" } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /properties/{slug}:
     get:
@@ -1857,15 +2039,6 @@ paths:
         "422": { $ref: "#/components/responses/ValidationError" }
 
   # ------------------------------------------------------------------ Planned
-  /search/properties:
-    get:
-      tags: [Search]
-      operationId: searchProperties
-      summary: "[Planned] Search with filters, bbox, radius or polygon (PostGIS)"
-      x-status: planned
-      security: []
-      responses:
-        "200": { $ref: "#/components/responses/Planned" }
   /crm/leads:
     get:
       tags: [CRM]
@@ -2464,7 +2637,7 @@ components:
         garage_spaces: { type: [integer, "null"] }
         heating: { type: array, items: { type: string } }
         cooling: { type: array, items: { type: string } }
-        amenities: { type: array, items: { type: string, enum: [pool, garage, basement, fireplace, central_air, laundry_in_unit, elevator, doorman, gym, balcony, patio, deck, waterfront, pets_allowed, ev_charging, solar, accessible] } }
+        amenities: { type: array, items: { $ref: "#/components/schemas/Amenity" } }
         hoa_fee_monthly: { type: [number, "null"] }
         annual_taxes: { type: [number, "null"] }
 
@@ -2516,6 +2689,66 @@ components:
                   source: { type: string }
                   changed_at: { type: string, format: date-time }
 
+    Amenity:
+      type: string
+      enum: [pool, garage, basement, fireplace, central_air, laundry_in_unit, elevator, doorman, gym, balcony, patio, deck, waterfront, pets_allowed, ev_charging, solar, accessible]
+    LocationSuggestion:
+      type: object
+      properties:
+        type: { type: string, enum: [city, postal_code] }
+        label: { type: string, examples: ["Hoboken, NJ"] }
+        city: { type: [string, "null"] }
+        county: { type: [string, "null"] }
+        state: { type: string }
+        postal_code: { type: [string, "null"] }
+        listings: { type: integer }
+        center:
+          oneOf:
+            - type: object
+              properties:
+                latitude: { type: number }
+                longitude: { type: number }
+            - type: "null"
+    SearchFilters:
+      type: object
+      description: Same names and rules as the `GET /properties` query parameters (no page or sort).
+      properties:
+        listing_type: { type: string, enum: [sale, rent] }
+        property_type: { $ref: "#/components/schemas/PropertyTypeCode" }
+        city: { type: string }
+        county: { type: string }
+        postal_code: { type: string }
+        min_price: { type: number }
+        max_price: { type: number }
+        min_beds: { type: integer }
+        min_baths: { type: number }
+        min_sqft: { type: integer }
+        max_sqft: { type: integer }
+        min_year: { type: integer }
+        amenities: { type: array, items: { $ref: "#/components/schemas/Amenity" } }
+        bbox: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        radius_miles: { type: number }
+        polygon: { type: string }
+    SavedSearchInput:
+      type: object
+      required: [name, filters]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        filters: { $ref: "#/components/schemas/SearchFilters" }
+        sort: { type: [string, "null"], enum: [newest, price_asc, price_desc, sqft_desc, distance, null] }
+        alert_frequency: { type: string, enum: ["off", daily, weekly], default: daily }
+    SavedSearch:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        filters: { $ref: "#/components/schemas/SearchFilters" }
+        sort: { type: [string, "null"] }
+        alert_frequency: { type: string, enum: ["off", daily, weekly] }
+        last_alerted_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
     PublicPropertySummary:
       type: object
       properties:

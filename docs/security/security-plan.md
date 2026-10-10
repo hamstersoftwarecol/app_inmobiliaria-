@@ -96,12 +96,27 @@ defaults when a role is first created; the super admin role always gets everythi
   image extensions from the media volume and never executes files there.
 * Sync, field-mapping changes, publication and deletions are written to the audit log.
 
+### Search, favorites and saved searches (Sprint 4)
+
+* Geographic filters (bbox, radius, polygon) only match listings whose exact address is public, so
+  repeatedly narrowing an area cannot locate a listing with a suppressed address; autocomplete map
+  centres are computed from public locations only.
+* Favorites and saved-search alerts go through the same public-visibility rules as the search page:
+  hidden, withdrawn or MLS-restricted listings are never returned or e-mailed. Saved searches are
+  owner-scoped (other users' ids return 404); limits: 500 favorites, 25 saved searches.
+* Alert e-mails go only to verified addresses, link to the page where alerts are turned off, and stop
+  when the account is deactivated or loses `saved_searches.manage`.
+* Rate limits: `search` 60/min and `api` 120/min per user or visitor. Server-side rendering sends the
+  shared secret `API_SSR_KEY` with the visitor's IP; the API trusts the forwarded IP only when the
+  secret matches (constant-time comparison), so browsers cannot spoof it. The secret is server-only.
+* Admin user screens offer only roles below the operator's level; the API remains the authority
+  (hierarchy guards). Audit-log date filters use agency calendar days.
+
 ## 3. Planned controls (by sprint)
 
 | Sprint | Control |
 |---|---|
 | 4 | R2 storage for media (private bucket for documents), malware scanning for uploads |
-| 5 | Search rate limits (`search` limiter), cache only within MLS freshness rules |
 | 8 | Appointment exclusion constraint (no double booking), notification consent & unsubscribe |
 | 9 | Document access policies, signed URLs (≤5 min), access logs, antivirus scanning (ClamAV) before availability, retention policies, `Idempotency-Key` on offers/transactions/appointments |
 | 11 | Admin audit UI, alerting on suspicious security events |

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AgentDirectory } from "@/features/agents/components/agent-directory";
-import { publicAgentService, type DirectoryFilters } from "@/services/agent-service";
+import type { DirectoryFilters } from "@/services/agent-service";
+import { publicAgentService } from "@/services/public-service";
 import type { Paginated, PublicAgent } from "@/types/api";
 
 export const metadata: Metadata = {

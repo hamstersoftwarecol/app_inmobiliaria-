@@ -140,6 +140,8 @@ jobs:
           echo "SECURITY_AUTH_REQUESTS_PER_MINUTE=200" >> .env
           echo "QUEUE_CONNECTION=sync" >> .env
           echo "MAIL_MAILER=log" >> .env
+          # Throwaway CI value (not a secret): exercises per-visitor SSR rate limiting.
+          sed -i 's/^API_SSR_KEY=.*/API_SSR_KEY=ci-only-ssr-key/' .env
           php artisan key:generate
           php artisan migrate --force --seed
           php artisan db:seed --class=E2ESeeder --force
@@ -150,6 +152,7 @@ jobs:
         env:
           NEXT_PUBLIC_API_URL: http://localhost:8000
           NEXT_PUBLIC_SITE_URL: http://localhost:3000
+          API_SSR_KEY: ci-only-ssr-key
         run: |
           npm ci
           npx playwright install --with-deps chromium

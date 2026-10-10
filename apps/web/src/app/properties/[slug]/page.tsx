@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { PropertyDetail } from "@/features/properties/components/property-detail";
 import { env } from "@/lib/env";
-import { publicPropertyService } from "@/services/property-service";
+import { publicPropertyService } from "@/services/public-service";
 
 export const dynamic = "force-dynamic";
 

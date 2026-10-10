@@ -159,7 +159,10 @@ expiry) is deferred until the first agreement exists.
   `property_status_history` (append-only status/price changes with source). 🗓️ `open_houses`.
 * `states`, `counties`, `cities`, `postal_codes`, `locations` (autocomplete; optional boundary
   `geography(MultiPolygon)` for polygon search).
-* `favorites`, `saved_searches` (filters jsonb + optional polygon), `property_views`.
+* ✅ `favorites` (PK user_id + property_id, `created_at`; cascades with either side).
+* ✅ `saved_searches` (user FK, name, `filters jsonb` — same keys as the search API, including
+  bbox/radius/polygon —, `sort`, `alert_frequency off|daily|weekly`, `last_alerted_at` timestamptz).
+* 🗓️ `property_views`.
 
 ## 4. Agency ✅ · CRM and scheduling 🗓️
 

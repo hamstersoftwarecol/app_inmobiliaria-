@@ -16,3 +16,15 @@ Schedule::command('hitlease:mls:sync-due --type=reconcile')
     ->timezone(config('hitlease.agency_timezone'))
     ->withoutOverlapping()
     ->onOneServer();
+
+// Saved-search alerts (agency morning; weekly digests on Mondays).
+Schedule::command('hitlease:saved-searches:alert --frequency=daily')
+    ->dailyAt('07:45')
+    ->timezone(config('hitlease.agency_timezone'))
+    ->withoutOverlapping()
+    ->onOneServer();
+Schedule::command('hitlease:saved-searches:alert --frequency=weekly')
+    ->weeklyOn(1, '07:50')
+    ->timezone(config('hitlease.agency_timezone'))
+    ->withoutOverlapping()
+    ->onOneServer();

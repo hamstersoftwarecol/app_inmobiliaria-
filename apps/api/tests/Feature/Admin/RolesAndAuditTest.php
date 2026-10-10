@@ -9,6 +9,7 @@ use App\Domain\Identity\Enums\RoleName;
 use App\Models\AuditLog;
 use App\Models\Role;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Support\Carbon;
 use LogicException;
 use Tests\TestCase;
 
@@ -79,5 +80,24 @@ class RolesAndAuditTest extends TestCase
         $log = AuditLog::firstOrFail();
         $this->expectException(LogicException::class);
         $log->update(['event' => 'tampered']);
+    }
+
+    public function test_audit_log_date_filters_use_agency_calendar_days(): void
+    {
+        $this->actingAsRole(RoleName::SuperAdmin);
+        AuditLog::query()->delete();
+
+        // 23:30 in New Jersey on March 10 is already March 11 in UTC.
+        $this->travelTo(Carbon::parse('2027-03-11 04:30:00', 'UTC'));
+        app(AuditLogger::class)->log(AuditCategory::Admin, 'late.evening');
+        $this->travelTo(Carbon::parse('2027-03-11 15:00:00', 'UTC'));
+        app(AuditLogger::class)->log(AuditCategory::Admin, 'next.day');
+
+        $events = fn (string $q) => collect($this->getJson('/api/v1/admin/audit-logs?'.$q)->assertOk()->json('data'))->pluck('event')->all();
+
+        $this->assertSame(['late.evening'], $events('from=2027-03-10&to=2027-03-10&event=late'));
+        $this->assertSame(['late.evening'], $events('to=2027-03-10'));
+        $this->assertSame(['next.day'], $events('from=2027-03-11'));
+        $this->getJson('/api/v1/admin/audit-logs?from=2027-03-12&to=2027-03-11')->assertUnprocessable();
     }
 }

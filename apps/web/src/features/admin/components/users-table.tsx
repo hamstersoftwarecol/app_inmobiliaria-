@@ -1,9 +1,10 @@
 "use client";
 
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { Input, Select } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,6 +41,13 @@ export function UsersTable() {
 
   return (
     <div className="space-y-4">
+      {me?.permissions?.includes("users.create") && (
+        <div className="flex justify-end">
+          <Link href="/admin/users/new" className={buttonVariants()}>
+            {t("adminUsers.newUser")}
+          </Link>
+        </div>
+      )}
       <div className="grid gap-3 sm:grid-cols-3">
         <div>
           <label htmlFor="user-search" className="sr-only">
@@ -125,7 +133,11 @@ export function UsersTable() {
                         {user.status === "active" ? t("admin.active") : t("admin.deactivated")}
                       </Badge>
                     </td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="space-x-2 whitespace-nowrap px-4 py-3 text-right">
+                      <Link href={`/admin/users/${user.id}`} className={buttonVariants({ size: "sm", variant: "outline" })}>
+                        {t("adminUsers.edit")}
+                        <span className="sr-only">: {user.full_name}</span>
+                      </Link>
                       {canDeactivate && user.id !== me?.id && (
                         <Button
                           size="sm"

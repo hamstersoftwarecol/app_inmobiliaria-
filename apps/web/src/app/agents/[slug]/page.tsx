@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { cache } from "react";
 import { AgentProfileView } from "@/features/agents/components/agent-profile-view";
 import { env } from "@/lib/env";
-import { publicAgentService } from "@/services/agent-service";
+import { publicAgentService } from "@/services/public-service";
 
 export const dynamic = "force-dynamic";
 

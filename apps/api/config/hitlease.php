@@ -17,6 +17,9 @@ return [
     'security' => [
         // Staff roles must enrol in TOTP MFA before using administrative routes.
         'enforce_staff_mfa' => (bool) env('SECURITY_ENFORCE_STAFF_MFA', true),
+        // Shared secret the Next.js server sends with SSR requests so rate limits apply per visitor
+        // (X-Hitlease-Client-IP) instead of to the web server's single address. Empty = disabled.
+        'ssr_key' => env('API_SSR_KEY', ''),
         'staff_roles' => ['super_admin', 'broker', 'office_manager'],
         'login_max_attempts' => (int) env('SECURITY_LOGIN_MAX_ATTEMPTS', 5),
         'login_decay_seconds' => (int) env('SECURITY_LOGIN_DECAY_SECONDS', 900),

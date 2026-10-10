@@ -51,17 +51,20 @@ dependency (not counted as done).
 | PRP-3 | Photo upload: type/size/dimension validation, re-encoding (EXIF/GPS stripped), ordering | P1 | 🟡 | `PropertyMediaTest`; stored on the `public` disk — Cloudflare R2 storage ⛔ (bucket + credentials + `league/flysystem-aws-s3-v3`) |
 | PRP-4 | Public listing pages (SSR), JSON-LD `RealEstateListing`, sitemap entry, MLS attribution/disclaimer at render time | P1 | ✅ | `PublicPropertyComplianceTest`, Vitest, Playwright |
 | PRP-5 | Mobile listing screens | P1 | ⏳ | Sprint 10 (mobile parity) |
-| ADM-1 | Web admin: create/edit users, audit log viewer | P1 | ⏳ | Carried over to Sprint 4 |
+| ADM-1 | Web admin: create/edit users, audit log viewer | P1 | ✅ | Delivered in Sprint 4 |
 
-## Sprint 5–6 — Search, maps, details
+## Sprint 4 — Search, favorites, saved searches (delivered)
 
-| ID | Item | Pri |
-|---|---|---|
-| SRC-1 | `/search/properties` filters, sort, pagination; `/search/locations` autocomplete | P0 |
-| SRC-2 | Bounding box, radius (`ST_DWithin`), polygon (`ST_Intersects`) search | P0 |
-| SRC-3 | Saved searches + new-listing alerts | P1 |
-| MAP-1 | Mapbox GL map: price markers, clustering, search-as-you-move, draw polygon | P0 |
-| DET-1 | Property detail page + gallery + MLS attribution/disclaimer | P0 |
+| ID | Item | Pri | Status | Evidence |
+|---|---|---|---|---|
+| SRC-1 | `GET /properties` filters (type, city, county, ZIP, price, beds, baths, size, year, amenities), sorts, pagination; `GET /locations` autocomplete | P0 | ✅ | `PropertySearchTest`, `/properties` |
+| SRC-2 | Bounding box (`ST_MakeEnvelope`), radius (`ST_DWithin`), polygon (`ST_Intersects`) on the GiST-indexed location; only listings with a public address | P0 | ✅ | `PropertySearchTest`; web: "near me" and radius from a suggested city/ZIP |
+| SRC-3 | Saved searches + daily/weekly new-listing alerts (mail to verified addresses + in-app) | P1 | ✅ | `FavoritesAndSavedSearchesTest`, `/dashboard/saved-searches` |
+| SRC-4 | Favorites | P1 | ✅ | `FavoritesAndSavedSearchesTest`, `/dashboard/favorites`, heart on cards and detail |
+| SRC-5 | Per-visitor rate limits for server-rendered pages (`API_SSR_KEY`) | P0 | ✅ | `PropertySearchTest` |
+| ADM-1 | Web admin: create/edit users and roles (hierarchy-aware), audit log viewer with agency-day date filters | P1 | ✅ | `RolesAndAuditTest`, Vitest, E2E |
+| MAP-1 | Mapbox GL map: price markers, clustering, search-as-you-move, draw polygon | P0 | ⛔ | Needs a Mapbox access token; the API side (bbox/polygon) is ready |
+| SRC-6 | `property_views` analytics | P2 | ⏳ | Sprint 11 (reports) |
 
 ## Sprint 7 — CRM
 
@@ -108,7 +111,7 @@ review for business decisions.
 | Dependency | Needed for | Owner |
 |---|---|---|
 | MLS data licences, IDX/VOW rules, API specs, sandbox credentials | MLS-2, MLS-5 | Broker |
-| Mapbox access token | MAP-1, mobile map | Agency |
+| Mapbox access token | MAP-1 (web map), mobile map | Agency |
 | Firebase project (FCM) | Push notifications | Agency |
 | Cloudflare R2 bucket + credentials | Media (PRP-3), documents, agent photos | DevOps |
 | Mail provider (SPF/DKIM/DMARC) | Production e-mail | DevOps |

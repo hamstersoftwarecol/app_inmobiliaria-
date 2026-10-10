@@ -40,7 +40,7 @@ class AppServiceProvider extends ServiceProvider
 
     private function configureRateLimiting(): void
     {
-        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: $request->ip()));
+        RateLimiter::for('api', fn (Request $request) => Limit::perMinute(120)->by($request->user()?->id ?: self::clientKey($request)));
 
         // Credential endpoints: per-IP ceiling on top of the per-account lockout.
         RateLimiter::for('auth', fn (Request $request) => [
@@ -48,7 +48,25 @@ class AppServiceProvider extends ServiceProvider
             Limit::perHour(100)->by('auth-ip-hour:'.$request->ip()),
         ]);
 
-        RateLimiter::for('search', fn (Request $request) => Limit::perMinute(60)->by($request->user()?->id ?: $request->ip()));
+        RateLimiter::for('search', fn (Request $request) => Limit::perMinute(60)->by('search:'.($request->user()?->id ?: self::clientKey($request))));
+    }
+
+    /**
+     * Rate-limit key for anonymous traffic. Server-side rendering (Next.js) calls the API from one
+     * address for every visitor, so it presents the shared `API_SSR_KEY` and the visitor's IP; the
+     * forwarded IP is only trusted when the key matches, otherwise the connection IP is used.
+     */
+    public static function clientKey(Request $request): string
+    {
+        $key = (string) config('hitlease.security.ssr_key');
+        $presented = (string) $request->header('X-Hitlease-SSR-Key');
+        $forwarded = (string) $request->header('X-Hitlease-Client-IP');
+
+        if ($key !== '' && $presented !== '' && hash_equals($key, $presented)) {
+            return 'ssr:'.(filter_var($forwarded, FILTER_VALIDATE_IP) ? $forwarded : 'unknown');
+        }
+
+        return (string) $request->ip();
     }
 
     private function configurePasswordPolicy(): void

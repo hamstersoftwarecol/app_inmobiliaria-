@@ -17,6 +17,8 @@ use App\Http\Controllers\Api\V1\Auth\ProfileController;
 use App\Http\Controllers\Api\V1\Auth\SessionController;
 use App\Http\Controllers\Api\V1\Manage\PropertyController as ManagePropertyController;
 use App\Http\Controllers\Api\V1\Me\AgentProfileController;
+use App\Http\Controllers\Api\V1\Me\FavoriteController;
+use App\Http\Controllers\Api\V1\Me\SavedSearchController;
 use App\Http\Controllers\Api\V1\Public\AgentDirectoryController;
 use App\Http\Controllers\Api\V1\Public\PropertyController;
 use Illuminate\Support\Facades\Route;
@@ -34,7 +36,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         ->where('slug', '[a-z0-9-]+')->name('agents.show');
 
     Route::get('/property-types', [PropertyController::class, 'types'])->name('property-types.index');
-    Route::get('/properties', [PropertyController::class, 'index'])->name('properties.index');
+    Route::middleware('throttle:search')->group(function () {
+        Route::get('/properties', [PropertyController::class, 'index'])->name('properties.index');
+        Route::get('/locations', [PropertyController::class, 'locations'])->name('locations.index');
+    });
     Route::get('/properties/{slug}', [PropertyController::class, 'show'])
         ->where('slug', '[a-z0-9-]+')->name('properties.show');
 
@@ -58,6 +63,20 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::get('/agent-profile', [AgentProfileController::class, 'show'])->name('agent-profile.show');
         Route::patch('/agent-profile', [AgentProfileController::class, 'update'])->name('agent-profile.update');
         Route::post('/agent-profile/licenses', [AgentProfileController::class, 'storeLicense'])->name('agent-profile.licenses.store');
+
+        Route::middleware('can:favorites.manage')->group(function () {
+            Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
+            Route::get('/favorites/slugs', [FavoriteController::class, 'slugs'])->name('favorites.slugs');
+            Route::put('/favorites/{slug}', [FavoriteController::class, 'store'])->where('slug', '[a-z0-9-]+')->name('favorites.store');
+            Route::delete('/favorites/{slug}', [FavoriteController::class, 'destroy'])->where('slug', '[a-z0-9-]+')->name('favorites.destroy');
+        });
+
+        Route::middleware('can:saved_searches.manage')->group(function () {
+            Route::get('/saved-searches', [SavedSearchController::class, 'index'])->name('saved-searches.index');
+            Route::post('/saved-searches', [SavedSearchController::class, 'store'])->name('saved-searches.store');
+            Route::patch('/saved-searches/{savedSearch}', [SavedSearchController::class, 'update'])->whereNumber('savedSearch')->name('saved-searches.update');
+            Route::delete('/saved-searches/{savedSearch}', [SavedSearchController::class, 'destroy'])->whereNumber('savedSearch')->name('saved-searches.destroy');
+        });
     });
 
     // ---------------------------------------------------------------- Auth (guest)

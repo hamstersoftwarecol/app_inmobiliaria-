@@ -1,41 +1,10 @@
 import { api, ensureCsrfCookie, readCookie, toApiError } from "@/lib/api-client";
 import { env } from "@/lib/env";
-import type { ManagedProperty, MlsStatus, MlsSyncJob, Paginated, PropertyMedia, PropertyTypeOption, PublicProperty, PublicPropertySummary } from "@/types/api";
+import type { ManagedProperty, MlsStatus, MlsSyncJob, Paginated, PropertyMedia, PropertyTypeOption } from "@/types/api";
 
-export interface BrowseFilters {
-  listing_type?: string;
-  property_type?: string;
-  city?: string;
-  postal_code?: string;
-  min_price?: string;
-  max_price?: string;
-  min_beds?: string;
-  sort?: string;
-  page?: number;
-}
 
 export type PropertyInput = Partial<Omit<ManagedProperty, "id" | "slug" | "source" | "is_published" | "published_at" | "publication_missing" | "property_type" | "listing_agent" | "mls" | "media" | "status_history" | "updated_at">> & {
   listing_agent_id?: number | null;
-};
-
-/**
- * Listings are never served from the data cache: unpublished or MLS-withdrawn listings must
- * disappear immediately (compliance). Reference data such as property types may be cached.
- */
-async function serverGet<T>(path: string, query: Record<string, string | number | undefined> = {}, revalidate?: number): Promise<T | null> {
-  const base = (process.env.API_INTERNAL_URL || env.apiUrl).replace(/\/$/, "");
-  const url = new URL(`${base}/api/v1${path}`);
-  Object.entries(query).forEach(([k, v]) => v !== undefined && v !== "" && url.searchParams.set(k, String(v)));
-  const res = await fetch(url, { headers: { Accept: "application/json" }, ...(revalidate ? { next: { revalidate } } : { cache: "no-store" as const }) });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return (await res.json()) as T;
-}
-
-export const publicPropertyService = {
-  list: (filters: BrowseFilters) => serverGet<Paginated<PublicPropertySummary>>("/properties", { ...filters }),
-  get: (slug: string) => serverGet<{ data: PublicProperty }>(`/properties/${encodeURIComponent(slug)}`).then((r) => r?.data ?? null),
-  types: () => serverGet<{ data: PropertyTypeOption[] }>("/property-types", {}, 3600).then((r) => r?.data ?? []),
 };
 
 /** Multipart upload with the same session/CSRF handling as JSON requests. */

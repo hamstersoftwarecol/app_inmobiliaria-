@@ -23,6 +23,16 @@ function Overview({ user }: { user: User }) {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-brand-800">{t("dashboard.welcome", { name: user.first_name })}</h1>
         <div className="flex flex-wrap gap-2">
+          {user.permissions?.includes("favorites.manage") && (
+            <Link href="/dashboard/favorites" className={buttonVariants({ variant: "outline" })}>
+              {t("nav.favorites")}
+            </Link>
+          )}
+          {user.permissions?.includes("saved_searches.manage") && (
+            <Link href="/dashboard/saved-searches" className={buttonVariants({ variant: "outline" })}>
+              {t("nav.savedSearches")}
+            </Link>
+          )}
           {canManageListings(user) && (
             <Link href="/dashboard/properties" className={buttonVariants({ variant: "outline" })}>
               {t("nav.listings")}

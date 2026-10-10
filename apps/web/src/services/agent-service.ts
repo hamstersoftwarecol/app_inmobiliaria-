@@ -1,6 +1,5 @@
 import { api } from "@/lib/api-client";
-import { env } from "@/lib/env";
-import type { Agency, Agent, AgentLicense, LicenseStatus, LicenseType, Office, Paginated, PublicAgent, VerificationSource } from "@/types/api";
+import type { Agency, Agent, AgentLicense, LicenseStatus, LicenseType, Office, Paginated, VerificationSource } from "@/types/api";
 
 export interface DirectoryFilters {
   search?: string;
@@ -32,22 +31,6 @@ export interface LicenseInput {
 
 export type OfficeInput = Partial<Omit<Office, "id" | "slug" | "agents_count">>;
 export type AgencyInput = Partial<Omit<Agency, "id" | "slug" | "offices" | "offices_count" | "agents_count">>;
-
-/** Server-side fetch for SSR pages (public directory). Uses an internal URL when provided. */
-async function serverGet<T>(path: string, query: Record<string, string | number | undefined> = {}): Promise<T | null> {
-  const base = (process.env.API_INTERNAL_URL || env.apiUrl).replace(/\/$/, "");
-  const url = new URL(`${base}/api/v1${path}`);
-  Object.entries(query).forEach(([k, v]) => v !== undefined && v !== "" && url.searchParams.set(k, String(v)));
-  const res = await fetch(url, { headers: { Accept: "application/json" }, next: { revalidate: 300 } });
-  if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`API ${res.status}`);
-  return (await res.json()) as T;
-}
-
-export const publicAgentService = {
-  list: (filters: DirectoryFilters) => serverGet<Paginated<PublicAgent>>("/agents", { ...filters }),
-  get: (slug: string) => serverGet<{ data: PublicAgent }>(`/agents/${encodeURIComponent(slug)}`).then((r) => r?.data ?? null),
-};
 
 export const myAgentService = {
   profile: () => api.get<{ data: Agent }>("/me/agent-profile").then((r) => r.data),

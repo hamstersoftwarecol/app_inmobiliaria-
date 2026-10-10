@@ -47,7 +47,7 @@ flowchart LR
 | Audit | **Implemented** | Append-only audit trail, secret redaction | `AuditLogger`, `AuditLog` |
 | MLS Integration Engine | **Implemented** (contract + sync pipeline); production sync blocked by external authorization | Provider contract, RESO adapter, normalization, compliance rules, encrypted connections, import/incremental/reconcile jobs, dedup, monitoring | `MLSProviderInterface`, `RESOWebAPIProvider`, `MLSConnectionManager`, `MLSSyncRunner`, `MLSListingSyncService`, `ListingMaterializer`, `MLSComplianceService` |
 | Listings / Properties | **Implemented** (Sprint 3) | Internal + MLS listings, publication workflow, photos, status/price history, public SEO pages | `PropertyService`, `PropertyMediaService`, `PropertyPolicy`, `PublicPropertyResource` |
-| Search | Planned (Sprint 5) | Filters, bbox/radius/polygon (PostGIS), autocomplete, saved searches, alerts | — |
+| Search | **Implemented** (Sprint 4); map UI blocked (Mapbox token) | Filters, bbox/radius/polygon (PostGIS), autocomplete, favorites, saved searches, alerts | `PropertySearch`, `SavedSearchAlerts`, `FavoriteController`, `SavedSearchController` |
 | Agency & Agents | **Implemented** (Sprint 2) | Agencies, offices (PostGIS), agent profiles, public directory, licence verification workflow + daily expiry | `AgentProfileService`, `LicenseVerificationService`, `AgentPolicy`, `AgentLicensePolicy`, `LicenseStatus` |
 | CRM | Planned (Sprint 7) | Leads, sources, pipeline, activities, tasks, duplicates | — |
 | Scheduling | Planned (Sprint 8) | Showings, availability, open houses, reminders (DST-safe) | — |
@@ -74,7 +74,7 @@ flowchart LR
 | `src/app` | Routes (App Router). Public: `/`, `/properties`, `/properties/[slug]`, `/agents`, auth pages (`/search?q=` redirects to `/properties`). Private: `/dashboard`, `/dashboard/properties`, `/dashboard/settings`, `/dashboard/agent-profile`, `/admin/*` (incl. `/admin/mls`). |
 | `src/features/<feature>/components` | Feature UI (auth, account, admin, home). |
 | `src/components/ui` | shadcn/ui-style primitives (Button, Input, Card, Alert, Badge, Skeleton, FormField, EmptyState). |
-| `src/services` | Typed API calls (`auth-service`, `admin-service`, `agent-service`, `property-service`). |
+| `src/services` | Typed API calls from the browser (`auth-service`, `admin-service`, `agent-service`, `property-service`, `search-service`); `public-service` + `lib/server-api` are server-only (SSR, forwards the visitor IP with `API_SSR_KEY`). |
 | `src/lib` | `api-client` (CSRF, credentials, error envelope), i18n, utils, env. |
 | `src/hooks`, `src/stores`, `src/validations`, `src/types` | TanStack Query hooks, Zustand stores, Zod schemas, API types. |
 

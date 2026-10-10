@@ -16,6 +16,7 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
     { href: "/admin/agents", label: t("admin.agents") },
     { href: "/admin/licenses", label: t("admin.licenses") },
     { href: "/admin/mls", label: t("admin.mls") },
+    { href: "/admin/audit", label: t("admin.audit") },
   ];
 
   return (
