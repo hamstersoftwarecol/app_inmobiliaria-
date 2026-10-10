@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1.7
 # Hitlease Web — Next.js standalone server (SSR).
 
-FROM node:22-alpine AS deps
+FROM node:25-alpine AS deps
 WORKDIR /app
 COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci
 
-FROM node:22-alpine AS build
+FROM node:25-alpine AS build
 WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 # Public build-time values (embedded in the client bundle — never secrets).
@@ -17,7 +17,7 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY apps/web/ ./
 RUN npm run build
 
-FROM node:22-alpine AS runtime
+FROM node:25-alpine AS runtime
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0
 RUN addgroup -S nextjs && adduser -S nextjs -G nextjs
