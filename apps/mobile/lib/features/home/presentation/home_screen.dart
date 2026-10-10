@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/router/app_router.dart';
+import '../../../shared/widgets/async_view.dart';
+import '../../account/data/account_repository.dart';
 import '../../auth/application/auth_controller.dart';
 import '../../auth/domain/user.dart';
 import '../../notifications/data/notification_repository.dart';
@@ -67,6 +69,18 @@ class HomeScreen extends ConsumerWidget {
               child: ListTile(
                 leading: const Icon(Icons.mark_email_unread_outlined),
                 title: Text(l10n.t('emailNotVerified')),
+                trailing: TextButton(
+                  key: const Key('resend-verification'),
+                  onPressed: () async {
+                    try {
+                      await ref.read(accountRepositoryProvider).resendVerification();
+                      if (context.mounted) showMessage(context, l10n.t('verificationSent'));
+                    } catch (e) {
+                      if (context.mounted) showError(context, e);
+                    }
+                  },
+                  child: Text(l10n.t('resend')),
+                ),
               ),
             ),
           tile(Icons.search, 'searchHomes', Routes.search, tileKey: const Key('home-search')),

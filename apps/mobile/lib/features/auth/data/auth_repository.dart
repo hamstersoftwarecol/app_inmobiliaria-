@@ -83,6 +83,31 @@ class AuthRepository {
     await _dio.post<void>('/auth/forgot-password', data: {'email': email.trim()});
   });
 
+  /// Sets a new password from the e-mailed link (`token` + `email`).
+  Future<void> resetPassword({required String token, required String email, required String password}) => guardApi(
+    () => _dio.post<void>(
+      '/auth/reset-password',
+      data: {'token': token, 'email': email, 'password': password, 'password_confirmation': password},
+    ),
+  );
+
+  /// Confirms the e-mail address with the signed parameters of the verification link.
+  Future<void> verifyEmail({
+    required String id,
+    required String hash,
+    required String expires,
+    required String signature,
+  }) => guardApi(
+    () => _dio.get<void>(
+      '/auth/email/verify/${Uri.encodeComponent(id)}/${Uri.encodeComponent(hash)}',
+      queryParameters: {'expires': expires, 'signature': signature},
+    ),
+  );
+
+  /// One-click unsubscribe from an e-mail category (no sign-in; the token identifies both).
+  Future<void> unsubscribe(String token) =>
+      guardApi(() => _dio.post<void>('/notifications/unsubscribe', data: {'token': token}));
+
   AuthResult _authResult(Map<String, dynamic> body) => AuthResult(
     user: User.fromJson(body['data'] as Map<String, dynamic>),
     token: (body['token'] as Map<String, dynamic>)['access_token'] as String,

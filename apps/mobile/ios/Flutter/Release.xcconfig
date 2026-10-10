@@ -1,1 +1,4 @@
 #include "Generated.xcconfig"
+
+// Website host for Universal Links (must match the Android appLinkHost).
+APP_LINK_HOST=app-inmobiliaria.example

@@ -206,6 +206,18 @@ const screenStringsEn = <String, String>{
   'lookingTo': 'Looking to',
   'preferredLanguage': 'Preferred language',
   'leadConsent': 'The person agreed to be contacted.',
+  // E-mail links
+  'resetPassword': 'Reset password',
+  'passwordResetDone': 'Your password was changed. Sign in with the new one.',
+  'verifyEmail': 'Verify e-mail',
+  'emailVerified': 'Your e-mail address is verified. Thank you!',
+  'unsubscribeTitle': 'Unsubscribe',
+  'unsubscribed':
+      'Done: you will no longer receive these e-mails. You can change this in Profile › E-mail preferences.',
+  'invalidLink': 'This link is incomplete or no longer valid. Request a new one.',
+  'goHome': 'Go to home',
+  'resend': 'Resend',
+  'verificationSent': 'We sent you a new verification e-mail.',
 };
 
 const screenStringsEs = <String, String>{
@@ -407,4 +419,14 @@ const screenStringsEs = <String, String>{
   'lookingTo': 'Quiere',
   'preferredLanguage': 'Idioma preferido',
   'leadConsent': 'La persona aceptó ser contactada.',
+  'resetPassword': 'Restablecer contraseña',
+  'passwordResetDone': 'Tu contraseña se cambió. Inicia sesión con la nueva.',
+  'verifyEmail': 'Verificar correo',
+  'emailVerified': 'Tu correo electrónico está verificado. ¡Gracias!',
+  'unsubscribeTitle': 'Darse de baja',
+  'unsubscribed': 'Listo: ya no recibirás estos correos. Puedes cambiarlo en Perfil › Preferencias de correo.',
+  'invalidLink': 'Este enlace está incompleto o ya no es válido. Solicita uno nuevo.',
+  'goHome': 'Ir al inicio',
+  'resend': 'Reenviar',
+  'verificationSent': 'Te enviamos un nuevo correo de verificación.',
 };

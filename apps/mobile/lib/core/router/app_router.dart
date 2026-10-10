@@ -7,6 +7,7 @@ import '../../features/agents/presentation/agents_screen.dart';
 import '../../features/agents/presentation/my_agent_profile_screen.dart';
 import '../../features/auth/application/auth_controller.dart';
 import '../../features/availability/presentation/availability_screen.dart';
+import '../../features/auth/presentation/email_link_screens.dart';
 import '../../features/auth/presentation/forgot_password_screen.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/auth/presentation/register_screen.dart';
@@ -87,19 +88,66 @@ abstract final class Routes {
     },
   ).toString();
 
+  static const resetPassword = '/reset-password';
+  static const verifyEmail = '/verify-email';
+  static const unsubscribe = '/unsubscribe';
+
   static const publicRoutes = {login, register, forgotPassword};
+
+  /// Opened from e-mail links; usable signed in or out.
+  static const openRoutes = {resetPassword, verifyEmail, unsubscribe};
+}
+
+/// Translates a link to the web app (from an e-mail or a shared URL, opened through App Links /
+/// Universal Links) into the matching screen of this app; null when the path needs no change.
+@visibleForTesting
+String? appLocationForWebLink(Uri uri) {
+  int? id(String s) => int.tryParse(s);
+  String? withId(String s, String Function(int) route) => id(s) == null ? null : route(id(s)!);
+
+  return switch (uri.pathSegments) {
+    ['properties'] => Routes.search,
+    ['properties', final slug] => Routes.property(slug),
+    ['dashboard'] => Routes.home,
+    ['dashboard', 'favorites'] => Routes.favorites,
+    ['dashboard', 'saved-searches'] => Routes.savedSearches,
+    ['dashboard', 'notifications'] => Routes.notifications,
+    ['dashboard', 'showings'] => Routes.showings,
+    ['dashboard', 'availability'] => Routes.availability,
+    ['dashboard', 'messages'] => Routes.messages,
+    ['dashboard', 'messages', final c] => withId(c, Routes.conversation),
+    ['dashboard', 'crm'] || ['dashboard', 'crm', 'leads'] => Routes.leads,
+    ['dashboard', 'crm', 'leads', final l] => withId(l, Routes.lead),
+    ['dashboard', 'crm', 'tasks'] => Routes.tasks,
+    ['dashboard', 'offers'] => Routes.offers,
+    ['dashboard', 'offers', final o] => withId(o, Routes.offer),
+    ['dashboard', 'transactions'] => Routes.transactions,
+    ['dashboard', 'transactions', final t] => withId(t, Routes.transaction),
+    ['dashboard', 'settings'] => Routes.profile,
+    ['dashboard', 'agent-profile'] => Routes.myAgentProfile,
+    _ => null,
+  };
 }
 
 /// Pure redirect rule, unit-tested independently of widgets.
 @visibleForTesting
-String? authRedirect({required AsyncValue<Object?> auth, required String location}) {
-  if (auth.isLoading && !auth.hasValue) return location == Routes.splash ? null : Routes.splash;
+///
+/// [uri] is the full requested location: when a link to a protected screen is opened while the
+/// session is restoring or signed out, it travels as `?from=` and is reopened after sign-in.
+String? authRedirect({required AsyncValue<Object?> auth, required String location, Uri? uri}) {
+  if (Routes.openRoutes.contains(location)) return null;
+
+  final atEntry = location == Routes.splash || Routes.publicRoutes.contains(location);
+  final from = atEntry ? uri?.queryParameters['from'] : (uri == null || location == Routes.home ? null : '$uri');
+  String keeping(String route) => from == null ? route : Uri(path: route, queryParameters: {'from': from}).toString();
+
+  if (auth.isLoading && !auth.hasValue) return location == Routes.splash ? null : keeping(Routes.splash);
 
   final signedIn = auth.value != null;
   final onPublic = Routes.publicRoutes.contains(location);
 
-  if (!signedIn) return onPublic ? null : Routes.login;
-  if (onPublic || location == Routes.splash) return Routes.home;
+  if (!signedIn) return onPublic ? null : keeping(Routes.login);
+  if (atEntry) return from != null && from.startsWith('/') ? from : Routes.home;
   return null;
 }
 
@@ -113,12 +161,27 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     initialLocation: Routes.splash,
     refreshListenable: refresh,
-    redirect: (context, state) => authRedirect(auth: ref.read(authControllerProvider), location: state.matchedLocation),
+    redirect: (context, state) =>
+        appLocationForWebLink(state.uri) ??
+        authRedirect(auth: ref.read(authControllerProvider), location: state.matchedLocation, uri: state.uri),
     routes: [
       GoRoute(path: Routes.splash, builder: (_, _) => const SplashScreen()),
       GoRoute(path: Routes.login, builder: (_, _) => const LoginScreen()),
       GoRoute(path: Routes.register, builder: (_, _) => const RegisterScreen()),
       GoRoute(path: Routes.forgotPassword, builder: (_, _) => const ForgotPasswordScreen()),
+      GoRoute(
+        path: Routes.resetPassword,
+        builder: (_, state) =>
+            ResetPasswordScreen(token: state.uri.queryParameters['token'], email: state.uri.queryParameters['email']),
+      ),
+      GoRoute(
+        path: Routes.verifyEmail,
+        builder: (_, state) => VerifyEmailScreen(params: state.uri.queryParameters),
+      ),
+      GoRoute(
+        path: Routes.unsubscribe,
+        builder: (_, state) => UnsubscribeScreen(token: state.uri.queryParameters['token']),
+      ),
       GoRoute(
         path: '/property/:slug',
         builder: (_, state) => PropertyDetailScreen(slug: state.pathParameters['slug']!),

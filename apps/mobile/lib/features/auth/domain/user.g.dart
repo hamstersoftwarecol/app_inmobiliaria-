@@ -6,10 +6,8 @@ part of 'user.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_UserRole _$UserRoleFromJson(Map<String, dynamic> json) => _UserRole(
-  name: json['name'] as String,
-  displayName: json['display_name'] as String,
-);
+_UserRole _$UserRoleFromJson(Map<String, dynamic> json) =>
+    _UserRole(name: json['name'] as String, displayName: json['display_name'] as String);
 
 Map<String, dynamic> _$UserRoleToJson(_UserRole instance) => <String, dynamic>{
   'name': instance.name,
@@ -30,15 +28,9 @@ _User _$UserFromJson(Map<String, dynamic> json) => _User(
   mfaEnabled: json['mfa_enabled'] as bool? ?? false,
   isStaff: json['is_staff'] as bool? ?? false,
   roles:
-      (json['roles'] as List<dynamic>?)
-          ?.map((e) => UserRole.fromJson(e as Map<String, dynamic>))
-          .toList() ??
+      (json['roles'] as List<dynamic>?)?.map((e) => UserRole.fromJson(e as Map<String, dynamic>)).toList() ??
       const <UserRole>[],
-  permissions:
-      (json['permissions'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toList() ??
-      const <String>[],
+  permissions: (json['permissions'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const <String>[],
 );
 
 Map<String, dynamic> _$UserToJson(_User instance) => <String, dynamic>{
