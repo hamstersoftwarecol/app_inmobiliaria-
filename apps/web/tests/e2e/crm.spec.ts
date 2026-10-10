@@ -23,6 +23,8 @@ test("a visitor's listing inquiry reaches the listing agent's CRM", async ({ pag
   await expect(page.getByText("Thank you! An agent will contact you shortly.")).toBeVisible();
 
   // The listing agent works the lead.
+  // Leave the previous page first: an in-flight request could otherwise restore its session cookie.
+  await page.goto("about:blank");
   await page.context().clearCookies();
   await page.goto("/login?next=%2Fdashboard%2Fcrm");
   await page.getByLabel("Email address").fill("e2e.verified@example.com");

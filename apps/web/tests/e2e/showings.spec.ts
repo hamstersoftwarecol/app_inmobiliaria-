@@ -6,6 +6,8 @@ const PASSWORD = process.env.E2E_PASSWORD ?? "E2e-Password-123!";
 test.describe.configure({ mode: "serial" });
 
 async function signIn(page: import("@playwright/test").Page, email: string, next: string) {
+  // Leave the previous page first: an in-flight request could otherwise restore its session cookie.
+  await page.goto("about:blank");
   await page.context().clearCookies();
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email address").fill(email);

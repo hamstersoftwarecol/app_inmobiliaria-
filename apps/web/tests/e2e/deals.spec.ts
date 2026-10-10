@@ -8,6 +8,8 @@ const OFFER_LISTING = "/properties/e2e-56-offer-court-hoboken";
 test.describe.configure({ mode: "serial" });
 
 async function signIn(page: import("@playwright/test").Page, email: string, next: string) {
+  // Leave the previous page first: an in-flight request could otherwise restore its session cookie.
+  await page.goto("about:blank");
   await page.context().clearCookies();
   await page.goto(`/login?next=${encodeURIComponent(next)}`);
   await page.getByLabel("Email address").fill(email);
@@ -34,11 +36,14 @@ test("a buyer messages the listing agent and gets a reply", async ({ page }, tes
   await expect(page.getByText("Is the basement finished?")).toBeVisible();
   await page.getByLabel("Message", { exact: true }).fill("Yes, it was finished in 2021.");
   await page.getByRole("button", { name: "Send" }).click();
-  await expect(page.getByText("Yes, it was finished in 2021.")).toBeVisible();
+  // Wait for the server round-trip (the reply lands in the thread and the composer clears)
+  // before signing out, or the navigation would abort the request.
+  await expect(page.getByRole("list", { name: "Messages" }).getByText("Yes, it was finished in 2021.")).toBeVisible();
+  await expect(page.getByLabel("Message", { exact: true })).toHaveValue("");
 
   await signIn(page, "e2e.buyer@example.com", "/dashboard/messages");
   await page.getByRole("link", { name: /Valeria Verified/ }).click();
-  await expect(page.getByText("Yes, it was finished in 2021.")).toBeVisible();
+  await expect(page.getByRole("list", { name: "Messages" }).getByText("Yes, it was finished in 2021.")).toBeVisible();
 });
 
 test("an offer is accepted and the deal shares documents with the buyer", async ({ page }, testInfo) => {
