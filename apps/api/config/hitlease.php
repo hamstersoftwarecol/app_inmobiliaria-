@@ -20,6 +20,8 @@ return [
         'staff_roles' => ['super_admin', 'broker', 'office_manager'],
         'login_max_attempts' => (int) env('SECURITY_LOGIN_MAX_ATTEMPTS', 5),
         'login_decay_seconds' => (int) env('SECURITY_LOGIN_DECAY_SECONDS', 900),
+        // Per-IP ceiling for credential endpoints (login, register, reset...).
+        'auth_requests_per_minute' => (int) env('SECURITY_AUTH_REQUESTS_PER_MINUTE', 10),
         // Seconds a password-verified login may wait for its MFA code.
         'mfa_challenge_ttl' => 300,
         'mfa_recovery_codes' => 8,

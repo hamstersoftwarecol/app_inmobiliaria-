@@ -44,7 +44,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Credential endpoints: per-IP ceiling on top of the per-account lockout.
         RateLimiter::for('auth', fn (Request $request) => [
-            Limit::perMinute(10)->by('auth-ip:'.$request->ip()),
+            Limit::perMinute((int) config('hitlease.security.auth_requests_per_minute', 10))->by('auth-ip:'.$request->ip()),
             Limit::perHour(100)->by('auth-ip-hour:'.$request->ip()),
         ]);
 
