@@ -35,7 +35,7 @@ dependency (not counted as done).
 | AGT-3 | Agent photo upload | P2 | ⛔ | Needs Cloudflare R2 bucket (PRP-3); `photo_url` accepts an HTTPS URL meanwhile |
 | AGT-4 | Automated licence lookup against the NJ Real Estate Commission | P2 | ⛔ | No official API/authorization known; verification is a manual, recorded staff step |
 | AGT-5 | Mobile agent directory / agent profile screens | P1 | ⏳ | Moved to Sprint 10 (mobile parity) |
-| ADM-1 | Web admin: create/edit users, audit log viewer | P1 | ⏳ | Carried over to Sprint 3 |
+| ADM-1 | Web admin: create/edit users, audit log viewer | P1 | ✅ | Delivered in Sprint 4 |
 | SET-1 | `system_settings` (audited) | P2 | ⏳ | |
 
 ## Sprint 3 — MLS pipeline & properties (delivered)
