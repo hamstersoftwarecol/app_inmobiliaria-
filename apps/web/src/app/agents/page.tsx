@@ -6,7 +6,7 @@ import type { Paginated, PublicAgent } from "@/types/api";
 
 export const metadata: Metadata = {
   title: "New Jersey real estate agents",
-  description: "Find a licensed New Jersey real estate agent whose licence has been verified by Hitlease Real Estate.",
+  description: "Find a licensed New Jersey real estate agent whose licence has been verified by App Inmobiliaria Real Estate.",
   alternates: { canonical: "/agents" },
 };
 

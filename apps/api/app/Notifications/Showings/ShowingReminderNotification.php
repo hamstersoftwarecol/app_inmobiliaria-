@@ -44,7 +44,7 @@ class ShowingReminderNotification extends Notification implements ShouldQueue
             $message->line("Address: {$address}");
         }
 
-        return $this->withUnsubscribe($message->action('View showing', config('hitlease.frontend_url').'/dashboard/showings'), $notifiable);
+        return $this->withUnsubscribe($message->action('View showing', config('app_inmobiliaria.frontend_url').'/dashboard/showings'), $notifiable);
     }
 
     /**

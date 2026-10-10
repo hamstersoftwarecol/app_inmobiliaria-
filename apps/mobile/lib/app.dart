@@ -7,13 +7,13 @@ import 'core/l10n/locale_controller.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
 
-class HitleaseApp extends ConsumerWidget {
-  const HitleaseApp({super.key});
+class AppInmobiliariaApp extends ConsumerWidget {
+  const AppInmobiliariaApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return MaterialApp.router(
-      title: 'Hitlease Real Estate',
+      title: 'App Inmobiliaria Real Estate',
       debugShowCheckedModeBanner: false,
       theme: buildAppTheme(),
       routerConfig: ref.watch(routerProvider),

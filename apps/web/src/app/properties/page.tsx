@@ -6,7 +6,7 @@ import type { Paginated, PropertyTypeOption, PublicPropertySummary } from "@/typ
 
 export const metadata: Metadata = {
   title: "Homes for sale and rent in New Jersey",
-  description: "Browse New Jersey homes for sale and rent from Hitlease Real Estate agents and authorized MLS sources.",
+  description: "Browse New Jersey homes for sale and rent from App Inmobiliaria Real Estate agents and authorized MLS sources.",
   alternates: { canonical: "/properties" },
 };
 

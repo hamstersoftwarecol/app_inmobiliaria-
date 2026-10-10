@@ -39,7 +39,7 @@ trait HonorsPreferences
             return $message;
         }
         $token = app(NotificationPreferences::class)->unsubscribeToken($notifiable, $this->preferenceEvent());
-        $page = config('hitlease.frontend_url').'/unsubscribe?token='.urlencode($token);
+        $page = config('app_inmobiliaria.frontend_url').'/unsubscribe?token='.urlencode($token);
         $oneClick = url('/api/v1/notifications/unsubscribe').'?token='.urlencode($token);
 
         return $message

@@ -1,11 +1,11 @@
-# Hitlease Real Estate — Architecture Overview
+# App Inmobiliaria Real Estate — Architecture Overview
 
 > Status: Phase 1 (analysis & architecture) — living document.
 > Scope: brokerage platform for a New Jersey real estate agency (web + mobile + REST API + MLS integration engine).
 
 ## 1. Context
 
-Hitlease Real Estate is a brokerage platform that lets one agency (multi-office capable) manage its inventory,
+App Inmobiliaria Real Estate is a brokerage platform that lets one agency (multi-office capable) manage its inventory,
 agents, leads, showings, offers, transactions and documents, and that publishes listings received from **authorized**
 MLS feeds (NJMLS, Garden State MLS, Bright MLS and other RESO Web API–compatible providers) under each provider's IDX
 rules.

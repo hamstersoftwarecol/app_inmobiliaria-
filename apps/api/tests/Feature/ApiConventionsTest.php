@@ -54,7 +54,7 @@ class ApiConventionsTest extends TestCase
 
     public function test_credential_endpoints_are_rate_limited_per_ip(): void
     {
-        config(['hitlease.security.auth_requests_per_minute' => 3]);
+        config(['app_inmobiliaria.security.auth_requests_per_minute' => 3]);
 
         for ($i = 0; $i < 3; $i++) {
             $this->postJson('/api/v1/auth/forgot-password', ['email' => "user{$i}@example.com"])->assertStatus(202);

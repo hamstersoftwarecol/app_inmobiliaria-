@@ -1,4 +1,4 @@
-package com.hitlease.hitlease_mobile
+package com.appinmobiliaria.app_inmobiliaria_mobile
 
 import io.flutter.embedding.android.FlutterActivity
 

@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hitlease_mobile/features/properties/domain/property.dart';
-import 'package:hitlease_mobile/features/saved_searches/domain/saved_search.dart';
+import 'package:app_inmobiliaria_mobile/features/properties/domain/property.dart';
+import 'package:app_inmobiliaria_mobile/features/saved_searches/domain/saved_search.dart';
 
 void main() {
   test('builds the API query, omitting empty values and the default sort', () {

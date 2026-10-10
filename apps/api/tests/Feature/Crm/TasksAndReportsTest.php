@@ -59,13 +59,13 @@ class TasksAndReportsTest extends TestCase
         $done = CrmTask::query()->create(['assigned_to' => $user->id, 'title' => 'Done', 'due_at' => now()->subHour()]);
         $done->forceFill(['completed_at' => now()])->save();
 
-        $this->artisan('hitlease:crm:task-reminders')->expectsOutputToContain('Sent 1 reminder(s).');
-        $this->artisan('hitlease:crm:task-reminders')->expectsOutputToContain('Sent 0 reminder(s).');
+        $this->artisan('app-inmobiliaria:crm:task-reminders')->expectsOutputToContain('Sent 1 reminder(s).');
+        $this->artisan('app-inmobiliaria:crm:task-reminders')->expectsOutputToContain('Sent 0 reminder(s).');
         Notification::assertSentToTimes($user, TaskReminderNotification::class, 1);
 
         Sanctum::actingAs($user);
         $this->patchJson("/api/v1/crm/tasks/{$dueSoon->id}", ['due_at' => now()->addMinutes(5)->toIso8601String()])->assertOk();
-        $this->artisan('hitlease:crm:task-reminders')->expectsOutputToContain('Sent 1 reminder(s).');
+        $this->artisan('app-inmobiliaria:crm:task-reminders')->expectsOutputToContain('Sent 1 reminder(s).');
     }
 
     public function test_report_summary_uses_agency_days_and_requires_reports_permission(): void

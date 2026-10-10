@@ -35,7 +35,7 @@ class LeadAssignedNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $url = config('hitlease.frontend_url')."/dashboard/crm/leads/{$this->lead->id}";
+        $url = config('app_inmobiliaria.frontend_url')."/dashboard/crm/leads/{$this->lead->id}";
 
         $message = (new MailMessage)
             ->subject('New lead assigned to you')

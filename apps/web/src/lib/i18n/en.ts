@@ -1,5 +1,5 @@
 const en = {
-  brand: "Hitlease Real Estate",
+  brand: "App Inmobiliaria Real Estate",
   nav: {
     home: "Home",
     dashboard: "Dashboard",

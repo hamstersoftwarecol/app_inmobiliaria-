@@ -14,7 +14,7 @@ use PragmaRX\Google2FA\Google2FA;
  */
 class MfaService
 {
-    private const ISSUER = 'Hitlease Real Estate';
+    private const ISSUER = 'App Inmobiliaria Real Estate';
 
     public function __construct(private readonly Google2FA $google2fa) {}
 
@@ -79,7 +79,7 @@ class MfaService
     public function regenerateRecoveryCodes(User $user): array
     {
         $plain = [];
-        for ($i = 0; $i < (int) config('hitlease.security.mfa_recovery_codes', 8); $i++) {
+        for ($i = 0; $i < (int) config('app_inmobiliaria.security.mfa_recovery_codes', 8); $i++) {
             $plain[] = Str::lower(Str::random(5).'-'.Str::random(5));
         }
 

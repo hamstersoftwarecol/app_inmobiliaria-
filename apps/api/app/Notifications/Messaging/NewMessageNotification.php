@@ -44,8 +44,8 @@ class NewMessageNotification extends Notification implements ShouldQueue
 
         return $this->withUnsubscribe((new MailMessage)
             ->subject("New message from {$from}")
-            ->line("{$from} sent you a message on Hitlease.")
-            ->action('Read the message', config('hitlease.frontend_url').'/dashboard/messages/'.$this->message->conversation_id), $notifiable);
+            ->line("{$from} sent you a message on App Inmobiliaria.")
+            ->action('Read the message', config('app_inmobiliaria.frontend_url').'/dashboard/messages/'.$this->message->conversation_id), $notifiable);
     }
 
     /**

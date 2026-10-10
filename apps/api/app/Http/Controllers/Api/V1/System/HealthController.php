@@ -38,7 +38,7 @@ class HealthController extends Controller
 
                 return $ok;
             }),
-            'storage' => $this->check(fn () => is_array(Storage::disk((string) config('hitlease.documents.disk', 'local'))->directories('/'))),
+            'storage' => $this->check(fn () => is_array(Storage::disk((string) config('app_inmobiliaria.documents.disk', 'local'))->directories('/'))),
         ];
 
         // Degraded (reported, not fatal): queue backlog and scheduler heartbeat.
@@ -48,7 +48,7 @@ class HealthController extends Controller
         } catch (Throwable) {
             $checks['queue'] = 'fail';
         }
-        $checks['queue'] ??= $backlog !== null && $backlog > (int) config('hitlease.health.max_queue_backlog', 1000) ? 'degraded' : 'ok';
+        $checks['queue'] ??= $backlog !== null && $backlog > (int) config('app_inmobiliaria.health.max_queue_backlog', 1000) ? 'degraded' : 'ok';
 
         try {
             $beat = Cache::get(self::HEARTBEAT_KEY);

@@ -136,11 +136,11 @@ class OffersAndTransactionsTest extends TestCase
         $this->as($this->buyerAgent);
         $id = $this->postJson('/api/v1/offers', $this->offer(['expires_at' => '2027-06-03T21:00:00Z']))->assertCreated()->json('data.id');
 
-        $this->artisan('hitlease:offers:expire')->assertSuccessful();
+        $this->artisan('app-inmobiliaria:offers:expire')->assertSuccessful();
         $this->assertSame('submitted', Offer::find($id)->status->value);
 
         $this->travelTo(Carbon::parse('2027-06-03 21:01:00', 'UTC'));
-        $this->artisan('hitlease:offers:expire')->expectsOutput('Expired 1 offer(s).')->assertSuccessful();
+        $this->artisan('app-inmobiliaria:offers:expire')->expectsOutput('Expired 1 offer(s).')->assertSuccessful();
         $this->assertSame('expired', Offer::find($id)->status->value);
         $this->as($this->listingAgent);
         $this->postJson("/api/v1/offers/{$id}/accept")->assertStatus(409);
@@ -220,12 +220,12 @@ class OffersAndTransactionsTest extends TestCase
         $tx = $this->openTransaction();
         Notification::fake();
         // Attorney review is due Monday June 7; reminders start two agency days before.
-        $this->artisan('hitlease:transactions:milestone-reminders')->assertSuccessful();
+        $this->artisan('app-inmobiliaria:transactions:milestone-reminders')->assertSuccessful();
         Notification::assertNothingSent();
 
         $this->travelTo(Carbon::parse('2027-06-05 12:00:00', 'UTC'));
-        $this->artisan('hitlease:transactions:milestone-reminders')->expectsOutput('Sent 2 reminder(s).')->assertSuccessful();
+        $this->artisan('app-inmobiliaria:transactions:milestone-reminders')->expectsOutput('Sent 2 reminder(s).')->assertSuccessful();
         Notification::assertSentTo(User::find($this->listingAgent->user_id), DealUpdateNotification::class, fn ($n) => $n->type === 'transaction.milestone_due' && $n->path === "/dashboard/transactions/{$tx->id}");
-        $this->artisan('hitlease:transactions:milestone-reminders')->expectsOutput('Sent 0 reminder(s).');
+        $this->artisan('app-inmobiliaria:transactions:milestone-reminders')->expectsOutput('Sent 0 reminder(s).');
     }
 }

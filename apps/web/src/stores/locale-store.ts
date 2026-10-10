@@ -15,6 +15,6 @@ export const useLocaleStore = create<LocaleState>()(
       locale: "en",
       setLocale: (locale) => set({ locale }),
     }),
-    { name: "hitlease-locale", storage: createJSONStorage(() => localStorage) },
+    { name: "app-inmobiliaria-locale", storage: createJSONStorage(() => localStorage) },
   ),
 );

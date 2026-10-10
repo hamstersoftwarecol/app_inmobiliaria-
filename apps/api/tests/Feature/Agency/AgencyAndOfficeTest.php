@@ -31,11 +31,11 @@ class AgencyAndOfficeTest extends TestCase
         $this->actingAsRole(RoleName::Broker);
 
         $agencyId = $this->postJson('/api/v1/admin/agencies', [
-            'name' => 'Hitlease Real Estate',
+            'name' => 'App Inmobiliaria Real Estate',
             'license_number' => 'TEST-0001',
             'website' => 'https://www.example.com',
         ])->assertCreated()
-            ->assertJsonPath('data.slug', 'hitlease-real-estate')
+            ->assertJsonPath('data.slug', 'app-inmobiliaria-real-estate')
             ->json('data.id');
         $agency = Agency::findOrFail($agencyId);
 

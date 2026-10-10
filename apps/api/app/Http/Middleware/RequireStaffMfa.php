@@ -18,7 +18,7 @@ class RequireStaffMfa
         $user = $request->user();
 
         if ($user !== null
-            && config('hitlease.security.enforce_staff_mfa')
+            && config('app_inmobiliaria.security.enforce_staff_mfa')
             && $user->isStaff()
             && ! $user->hasMfaEnabled()) {
             throw AuthorizationDenied::mfaEnrollmentRequired();

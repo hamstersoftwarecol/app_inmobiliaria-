@@ -15,13 +15,13 @@ use Illuminate\Console\Command;
  */
 class SyncDueMlsConnections extends Command
 {
-    protected $signature = 'hitlease:mls:sync-due {--type=incremental : incremental or reconcile}';
+    protected $signature = 'app-inmobiliaria:mls:sync-due {--type=incremental : incremental or reconcile}';
 
     protected $description = 'Queue MLS syncs for authorized production connections that are due';
 
     public function handle(MLSSyncDispatcher $dispatcher): int
     {
-        if (! config('hitlease.mls.sync_enabled')) {
+        if (! config('app_inmobiliaria.mls.sync_enabled')) {
             $this->info('MLS sync is disabled (MLS_SYNC_ENABLED=false).');
 
             return self::SUCCESS;

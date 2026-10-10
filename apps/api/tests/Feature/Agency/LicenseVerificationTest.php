@@ -146,7 +146,7 @@ class LicenseVerificationTest extends TestCase
         $this->getJson("/api/v1/agents/{$expiring->agent->slug}")->assertNotFound();
         $this->getJson("/api/v1/agents/{$valid->agent->slug}")->assertOk();
 
-        $this->artisan('hitlease:licenses:expire')->expectsOutputToContain('Expired 1 licence(s).')->assertSuccessful();
+        $this->artisan('app-inmobiliaria:licenses:expire')->expectsOutputToContain('Expired 1 licence(s).')->assertSuccessful();
 
         $this->assertSame('expired', $expiring->fresh()->status->value);
         $this->assertSame('verified', $valid->fresh()->status->value);
@@ -172,12 +172,12 @@ class LicenseVerificationTest extends TestCase
 
         $this->assertTrue($license->fresh()->isCurrentlyValid());
         $this->getJson("/api/v1/agents/{$license->agent->slug}")->assertOk();
-        $this->artisan('hitlease:licenses:expire')->expectsOutputToContain('Expired 0 licence(s).');
+        $this->artisan('app-inmobiliaria:licenses:expire')->expectsOutputToContain('Expired 0 licence(s).');
 
         // Once New Jersey reaches March 11 the licence is no longer valid.
         $this->travelTo(Carbon::parse('2027-03-11 05:30:00', 'UTC'));
         $this->assertFalse($license->fresh()->isCurrentlyValid());
         $this->getJson("/api/v1/agents/{$license->agent->slug}")->assertNotFound();
-        $this->artisan('hitlease:licenses:expire')->expectsOutputToContain('Expired 1 licence(s).');
+        $this->artisan('app-inmobiliaria:licenses:expire')->expectsOutputToContain('Expired 1 licence(s).');
     }
 }

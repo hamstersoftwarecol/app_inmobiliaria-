@@ -44,7 +44,7 @@ class SavedSearchMatchesNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $frontend = config('hitlease.frontend_url');
+        $frontend = config('app_inmobiliaria.frontend_url');
         $message = (new MailMessage)
             ->subject("New listings for \"{$this->search->name}\"")
             ->line("{$this->total} new listing(s) match your saved search \"{$this->search->name}\".");

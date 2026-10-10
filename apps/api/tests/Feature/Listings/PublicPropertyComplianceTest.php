@@ -54,8 +54,8 @@ class PublicPropertyComplianceTest extends TestCase
         $this->assertNull($data['details']['annual_taxes']);
         $this->assertSame([], $data['photos']);
 
-        $this->getJson("/api/v1/properties/{$slug}", ['X-Hitlease-Client' => 'mobile'])->assertNotFound();
-        $this->getJson('/api/v1/properties', ['X-Hitlease-Client' => 'mobile'])->assertOk()->assertJsonCount(0, 'data');
+        $this->getJson("/api/v1/properties/{$slug}", ['X-App-Inmobiliaria-Client' => 'mobile'])->assertNotFound();
+        $this->getJson('/api/v1/properties', ['X-App-Inmobiliaria-Client' => 'mobile'])->assertOk()->assertJsonCount(0, 'data');
     }
 
     public function test_revoking_display_rules_hides_listings_immediately(): void

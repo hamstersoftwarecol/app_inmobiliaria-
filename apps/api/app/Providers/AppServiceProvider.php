@@ -22,11 +22,11 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->singleton(MLSConnectionResolver::class, MLSConnectionManager::class);
 
-        $this->app->bind(DocumentScanner::class, fn () => match (config('hitlease.documents.scanner')) {
+        $this->app->bind(DocumentScanner::class, fn () => match (config('app_inmobiliaria.documents.scanner')) {
             'clamd' => new ClamdScanner(
-                (string) config('hitlease.documents.clamd_host'),
-                (int) config('hitlease.documents.clamd_port'),
-                (int) config('hitlease.documents.clamd_timeout'),
+                (string) config('app_inmobiliaria.documents.clamd_host'),
+                (int) config('app_inmobiliaria.documents.clamd_port'),
+                (int) config('app_inmobiliaria.documents.clamd_timeout'),
             ),
             default => new NullScanner,
         });
@@ -56,7 +56,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Credential endpoints: per-IP ceiling on top of the per-account lockout.
         RateLimiter::for('auth', fn (Request $request) => [
-            Limit::perMinute((int) config('hitlease.security.auth_requests_per_minute', 10))->by('auth-ip:'.$request->ip()),
+            Limit::perMinute((int) config('app_inmobiliaria.security.auth_requests_per_minute', 10))->by('auth-ip:'.$request->ip()),
             Limit::perHour(100)->by('auth-ip-hour:'.$request->ip()),
         ]);
 
@@ -79,9 +79,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public static function clientKey(Request $request): string
     {
-        $key = (string) config('hitlease.security.ssr_key');
-        $presented = (string) $request->header('X-Hitlease-SSR-Key');
-        $forwarded = (string) $request->header('X-Hitlease-Client-IP');
+        $key = (string) config('app_inmobiliaria.security.ssr_key');
+        $presented = (string) $request->header('X-App-Inmobiliaria-SSR-Key');
+        $forwarded = (string) $request->header('X-App-Inmobiliaria-Client-IP');
 
         if ($key !== '' && $presented !== '' && hash_equals($key, $presented)) {
             return 'ssr:'.(filter_var($forwarded, FILTER_VALIDATE_IP) ? $forwarded : 'unknown');

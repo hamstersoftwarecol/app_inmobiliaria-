@@ -13,7 +13,7 @@ export const reportService = {
     const res = await fetch(url, { credentials: "include", headers: { Accept: "text/csv, application/json", "X-Requested-With": "XMLHttpRequest" } });
     if (!res.ok) throw await toApiError(res);
     const blob = await res.blob();
-    const name = /filename="?([^";]+)"?/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? `hitlease-${dataset}.csv`;
+    const name = /filename="?([^";]+)"?/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? `app-inmobiliaria-${dataset}.csv`;
     const href = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = href;

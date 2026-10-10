@@ -45,7 +45,7 @@ class AuditLogController extends Controller
     private function boundary(string $value, bool $end): Carbon
     {
         if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
-            $day = Carbon::parse($value, config('hitlease.agency_timezone'));
+            $day = Carbon::parse($value, config('app_inmobiliaria.agency_timezone'));
 
             return ($end ? $day->endOfDay() : $day->startOfDay())->utc();
         }

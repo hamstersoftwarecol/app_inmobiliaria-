@@ -30,7 +30,7 @@ class MLSConnectionManager implements MLSConnectionResolver
         }
 
         if ($connection->isProduction()) {
-            if (! config('hitlease.mls.sync_enabled')) {
+            if (! config('app_inmobiliaria.mls.sync_enabled')) {
                 throw MLSException::syncDisabled();
             }
             if (! $provider->isAuthorizedForProduction()) {

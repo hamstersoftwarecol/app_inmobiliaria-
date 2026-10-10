@@ -12,7 +12,7 @@ use Illuminate\Console\Command;
 
 class SendMilestoneReminders extends Command
 {
-    protected $signature = 'hitlease:transactions:milestone-reminders {--days=2 : Remind this many agency days before the due date}';
+    protected $signature = 'app-inmobiliaria:transactions:milestone-reminders {--days=2 : Remind this many agency days before the due date}';
 
     protected $description = 'Remind the agents on open transactions about contract milestones that are coming due (once per due date)';
 

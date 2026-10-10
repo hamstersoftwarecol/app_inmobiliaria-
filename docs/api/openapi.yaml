@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Hitlease Real Estate API
+  title: App Inmobiliaria Real Estate API
   version: 1.0.0-rc.1
-  summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
+  summary: REST API for the App Inmobiliaria Real Estate brokerage platform (New Jersey).
   description: |
     Central API consumed by the Next.js web app and the Flutter mobile app.
 
@@ -18,12 +18,12 @@ info:
     Operations tagged with `x-status: planned` are part of the agreed contract but are
     **not implemented yet**; they return 404 today.
   contact:
-    name: Hitlease Engineering
+    name: App Inmobiliaria Engineering
   license:
     name: Proprietary
     identifier: LicenseRef-Proprietary
 servers:
-  - url: https://api.hitlease.example/api/v1
+  - url: https://api.app-inmobiliaria.example/api/v1
     description: Illustrative production URL (configure the real domain)
   - url: http://localhost:8000/api/v1
     description: Local development
@@ -1644,7 +1644,7 @@ paths:
         Attribute filters plus one geographic filter (`bbox`, `lat`+`lng`+`radius_miles`, or `polygon`).
         Geographic filters only match listings whose exact location is public (`address.displayed`), so
         narrowing an area never reveals a suppressed address. Rate limited by the `search` limiter
-        (60/min per user or visitor). Send `X-Hitlease-Client: mobile` from the mobile app so MLS listings
+        (60/min per user or visitor). Send `X-App-Inmobiliaria-Client: mobile` from the mobile app so MLS listings
         whose licence forbids mobile display are excluded.
       security: []
       parameters:
@@ -3718,7 +3718,7 @@ components:
     cookieSession:
       type: apiKey
       in: cookie
-      name: hitlease-real-estate-api-session
+      name: app-inmobiliaria-real-estate-api-session
       description: Sanctum SPA session cookie (first-party web only) + `X-XSRF-TOKEN` header on mutations.
     bearerToken:
       type: http
@@ -3727,7 +3727,7 @@ components:
 
   parameters:
     ClientChannel:
-      name: X-Hitlease-Client
+      name: X-App-Inmobiliaria-Client
       in: header
       description: Set to `mobile` from the mobile app (MLS mobile-display rules).
       schema: { type: string, enum: [web, mobile] }

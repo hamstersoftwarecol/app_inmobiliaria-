@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Storage;
  */
 class PurgeExpiredDocuments extends Command
 {
-    protected $signature = 'hitlease:documents:purge {--force : Actually delete files and records}';
+    protected $signature = 'app-inmobiliaria:documents:purge {--force : Actually delete files and records}';
 
     protected $description = 'List (or with --force delete) documents past their retention date';
 

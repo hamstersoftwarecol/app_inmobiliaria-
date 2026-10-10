@@ -46,7 +46,7 @@ final class DocumentService
                 // Late uploads to a finished deal inherit its retention date.
                 'retain_until' => $transaction->documents()->whereNotNull('retain_until')->max('retain_until')
                     ?? ($transaction->status === TransactionStatus::Open ? null
-                        : AgencyClock::today()->addYears((int) config('hitlease.documents.retention_years', 6))->toDateString()),
+                        : AgencyClock::today()->addYears((int) config('app_inmobiliaria.documents.retention_years', 6))->toDateString()),
             ]);
             $this->storeVersion($actor, $document, $file);
             $this->audit->log(AuditCategory::Data, 'documents.uploaded', $actor, $document, null, ['title' => $title, 'visibility' => $visibility]);
@@ -86,7 +86,7 @@ final class DocumentService
         $this->assertDownloadable($version);
         $this->log($version, $actor, 'link_issued', $ip, $userAgent);
 
-        return URL::temporarySignedRoute('documents.download', now()->addMinutes((int) config('hitlease.documents.link_minutes', 5)), [
+        return URL::temporarySignedRoute('documents.download', now()->addMinutes((int) config('app_inmobiliaria.documents.link_minutes', 5)), [
             'version' => $version->id,
             'u' => $actor->id,
         ]);
@@ -137,7 +137,7 @@ final class DocumentService
 
     private function storeVersion(User $actor, Document $document, UploadedFile $file): DocumentVersion
     {
-        $disk = (string) config('hitlease.documents.disk', 'local');
+        $disk = (string) config('app_inmobiliaria.documents.disk', 'local');
         $extension = strtolower($file->getClientOriginalExtension() ?: $file->extension() ?: 'bin');
         $path = $file->storeAs("documents/{$document->transaction_id}", Str::uuid().'.'.$extension, ['disk' => $disk]);
         // Serialize concurrent uploads of the same document (the version number is unique per document).

@@ -24,5 +24,5 @@ test("brokers see agency KPIs, activity charts and can export CSV", async ({ pag
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "Listings" }).click();
   const file = await download;
-  expect(file.suggestedFilename()).toMatch(/^hitlease-listings-\d{4}-\d{2}-\d{2}-to-\d{4}-\d{2}-\d{2}\.csv$/);
+  expect(file.suggestedFilename()).toMatch(/^app-inmobiliaria-listings-\d{4}-\d{2}-\d{2}-to-\d{4}-\d{2}-\d{2}\.csv$/);
 });

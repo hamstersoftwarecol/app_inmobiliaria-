@@ -90,7 +90,7 @@ class MlsSyncController extends Controller
         });
 
         return response()->json(['data' => [
-            'sync_enabled' => (bool) config('hitlease.mls.sync_enabled'),
+            'sync_enabled' => (bool) config('app_inmobiliaria.mls.sync_enabled'),
             'connections' => $connections,
             'duplicate_candidates' => $dedup->crossProviderCandidates(),
         ]]);

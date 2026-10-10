@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hitlease_mobile/core/network/api_client.dart';
-import 'package:hitlease_mobile/core/network/api_exception.dart';
-import 'package:hitlease_mobile/core/storage/token_storage.dart';
-import 'package:hitlease_mobile/features/auth/application/auth_controller.dart';
-import 'package:hitlease_mobile/features/auth/data/auth_repository.dart';
+import 'package:app_inmobiliaria_mobile/core/network/api_client.dart';
+import 'package:app_inmobiliaria_mobile/core/network/api_exception.dart';
+import 'package:app_inmobiliaria_mobile/core/storage/token_storage.dart';
+import 'package:app_inmobiliaria_mobile/features/auth/application/auth_controller.dart';
+import 'package:app_inmobiliaria_mobile/features/auth/data/auth_repository.dart';
 
 import '../../helpers/fake_http_adapter.dart';
 

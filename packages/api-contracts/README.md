@@ -1,4 +1,4 @@
-# @hitlease/api-contracts
+# @app-inmobiliaria/api-contracts
 
 Single source of truth for the API contract: [`docs/api/openapi.yaml`](../../docs/api/openapi.yaml)
 (OpenAPI 3.1, linted in CI with Redocly).

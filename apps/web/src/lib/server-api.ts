@@ -28,9 +28,9 @@ export async function serverGet<T>(path: string, query: Query = {}, revalidate?:
   const requestHeaders: Record<string, string> = { Accept: "application/json" };
   const ssrKey = process.env.API_SSR_KEY;
   if (ssrKey) {
-    requestHeaders["X-Hitlease-SSR-Key"] = ssrKey;
+    requestHeaders["X-App-Inmobiliaria-SSR-Key"] = ssrKey;
     const ip = await visitorIp();
-    if (ip) requestHeaders["X-Hitlease-Client-IP"] = ip;
+    if (ip) requestHeaders["X-App-Inmobiliaria-Client-IP"] = ip;
   }
 
   const res = await fetch(url, {

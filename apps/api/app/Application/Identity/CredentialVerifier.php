@@ -21,7 +21,7 @@ class CredentialVerifier
     public function verify(string $email, string $password, string $ip): User
     {
         $key = $this->throttleKey($email, $ip);
-        $maxAttempts = (int) config('hitlease.security.login_max_attempts', 5);
+        $maxAttempts = (int) config('app_inmobiliaria.security.login_max_attempts', 5);
 
         if (RateLimiter::tooManyAttempts($key, $maxAttempts)) {
             $this->audit->security('auth.login.locked_out', metadata: ['email' => Str::lower($email)]);
@@ -35,7 +35,7 @@ class CredentialVerifier
         $valid = Hash::check($password, $user?->password ?? '$2y$12$'.str_repeat('a', 53));
 
         if (! $user || ! $valid) {
-            RateLimiter::hit($key, (int) config('hitlease.security.login_decay_seconds', 900));
+            RateLimiter::hit($key, (int) config('app_inmobiliaria.security.login_decay_seconds', 900));
             $this->audit->security('auth.login.failed', $user, ['email' => Str::lower($email)]);
 
             throw AuthenticationFailed::invalidCredentials();
@@ -64,14 +64,14 @@ class CredentialVerifier
     public function assertMfaNotLocked(User $user): void
     {
         $key = 'mfa-attempts:'.$user->getKey();
-        if (RateLimiter::tooManyAttempts($key, (int) config('hitlease.security.login_max_attempts', 5))) {
+        if (RateLimiter::tooManyAttempts($key, (int) config('app_inmobiliaria.security.login_max_attempts', 5))) {
             throw AuthenticationFailed::tooManyAttempts(RateLimiter::availableIn($key));
         }
     }
 
     public function recordMfaFailure(User $user): void
     {
-        RateLimiter::hit('mfa-attempts:'.$user->getKey(), (int) config('hitlease.security.login_decay_seconds', 900));
+        RateLimiter::hit('mfa-attempts:'.$user->getKey(), (int) config('app_inmobiliaria.security.login_decay_seconds', 900));
         $this->audit->security('auth.mfa.failed', $user);
     }
 

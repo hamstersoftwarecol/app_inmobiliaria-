@@ -1,7 +1,7 @@
 import type { Dictionary } from "./en";
 
 const es: Dictionary = {
-  brand: "Hitlease Real Estate",
+  brand: "App Inmobiliaria Real Estate",
   nav: {
     home: "Inicio",
     dashboard: "Panel",

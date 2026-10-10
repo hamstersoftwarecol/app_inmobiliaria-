@@ -102,7 +102,7 @@ class FavoritesAndSavedSearchesTest extends TestCase
         Property::factory()->published()->create(['title' => 'Elsewhere', 'city' => 'Newark', 'published_at' => now()->subHour()]);
         Property::factory()->create(['title' => 'Draft', 'published_at' => now()->subHour()]);
 
-        $this->artisan('hitlease:saved-searches:alert --frequency=daily')->expectsOutputToContain('notified 1')->assertSuccessful();
+        $this->artisan('app-inmobiliaria:saved-searches:alert --frequency=daily')->expectsOutputToContain('notified 1')->assertSuccessful();
 
         Notification::assertSentTo($buyer, SavedSearchMatchesNotification::class, function ($n, $channels) use ($search) {
             return $n->search->is($search) && $n->total === 1 && $n->listings[0]['title'] === 'New match' && $channels == ['database', 'mail'];
@@ -112,10 +112,10 @@ class FavoritesAndSavedSearchesTest extends TestCase
         $this->assertTrue($muted->fresh()->last_alerted_at->lt(now()->subHours(12)));
 
         // Second run: nothing new since the last alert.
-        $this->artisan('hitlease:saved-searches:alert --frequency=daily')->expectsOutputToContain('notified 0');
+        $this->artisan('app-inmobiliaria:saved-searches:alert --frequency=daily')->expectsOutputToContain('notified 0');
         Notification::assertSentTimes(SavedSearchMatchesNotification::class, 1);
 
-        $this->artisan('hitlease:saved-searches:alert --frequency=off')->assertExitCode(2);
+        $this->artisan('app-inmobiliaria:saved-searches:alert --frequency=off')->assertExitCode(2);
     }
 
     public function test_alerts_skip_unverified_mail_and_deactivated_users(): void
@@ -128,7 +128,7 @@ class FavoritesAndSavedSearchesTest extends TestCase
         }
         Property::factory()->published()->create(['published_at' => now()->subHour()]);
 
-        $this->artisan('hitlease:saved-searches:alert');
+        $this->artisan('app-inmobiliaria:saved-searches:alert');
 
         Notification::assertSentTo($unverified, SavedSearchMatchesNotification::class, fn ($n, $channels) => $channels === ['database']);
         Notification::assertNotSentTo($inactive, SavedSearchMatchesNotification::class);

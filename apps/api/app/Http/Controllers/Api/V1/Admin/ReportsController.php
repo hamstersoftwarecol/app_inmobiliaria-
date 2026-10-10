@@ -53,7 +53,7 @@ class ReportsController extends Controller
             'from' => ['nullable', 'date_format:Y-m-d'],
             'to' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:from'],
         ]);
-        $zone = (string) config('hitlease.agency_timezone');
+        $zone = (string) config('app_inmobiliaria.agency_timezone');
         $to = isset($data['to']) ? Carbon::parse($data['to'], $zone)->endOfDay() : Carbon::now($zone)->endOfDay();
         $from = isset($data['from']) ? Carbon::parse($data['from'], $zone)->startOfDay() : $to->copy()->subDays(29)->startOfDay();
         if ($from->diffInDays($to) > 366) {

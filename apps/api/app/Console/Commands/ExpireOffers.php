@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 class ExpireOffers extends Command
 {
-    protected $signature = 'hitlease:offers:expire';
+    protected $signature = 'app-inmobiliaria:offers:expire';
 
     protected $description = 'Mark submitted offers past their response deadline as expired';
 

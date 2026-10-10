@@ -34,13 +34,13 @@ class TaskReminderNotification extends Notification implements ShouldQueue
 
     public function toMail(object $notifiable): MailMessage
     {
-        $zone = $notifiable->timezone ?: config('hitlease.agency_timezone');
+        $zone = $notifiable->timezone ?: config('app_inmobiliaria.agency_timezone');
         $due = $this->task->due_at->copy()->setTimezone($zone)->format('M j, Y g:i A T');
 
         $message = (new MailMessage)
             ->subject("Reminder: {$this->task->title}")
             ->line("Your task \"{$this->task->title}\" is due {$due}.")
-            ->action('Open my tasks', config('hitlease.frontend_url').'/dashboard/crm/tasks');
+            ->action('Open my tasks', config('app_inmobiliaria.frontend_url').'/dashboard/crm/tasks');
 
         return $this->withUnsubscribe($message, $notifiable);
     }

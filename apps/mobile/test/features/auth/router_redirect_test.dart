@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hitlease_mobile/core/router/app_router.dart';
+import 'package:app_inmobiliaria_mobile/core/router/app_router.dart';
 
 void main() {
   const loading = AsyncLoading<Object?>();

@@ -23,7 +23,7 @@ final class AgencyDashboard
      */
     public function summary(Carbon $from, Carbon $to): array
     {
-        $zone = (string) config('hitlease.agency_timezone');
+        $zone = (string) config('app_inmobiliaria.agency_timezone');
         $range = [$from->copy()->utc(), $to->copy()->utc()];
         $count = fn (string $table, string $column, array $where = []) => DB::table($table)
             ->whereBetween($column, $range)

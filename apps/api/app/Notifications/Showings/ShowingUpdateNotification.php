@@ -58,7 +58,7 @@ class ShowingUpdateNotification extends Notification implements ShouldQueue
         if ($a->status_reason && in_array($this->kind, ['declined', 'cancelled'], true)) {
             $message->line('Reason: '.$a->status_reason);
         }
-        $message->action('View showing', config('hitlease.frontend_url').'/dashboard/showings');
+        $message->action('View showing', config('app_inmobiliaria.frontend_url').'/dashboard/showings');
         if ($this->kind === 'confirmed') {
             $message->attachData(ShowingCalendar::ics($a), 'showing.ics', ['mime' => 'text/calendar; charset=utf-8; method=PUBLISH']);
         }

@@ -219,13 +219,13 @@ class ShowingsTest extends TestCase
 
         // 20 h before: the 24 h reminder, once, to both sides.
         $this->travelTo(Carbon::parse('2027-03-10 18:00:00', 'UTC'));
-        $this->artisan('hitlease:showings:reminders')->expectsOutputToContain('Sent 1 showing reminder(s).');
-        $this->artisan('hitlease:showings:reminders')->expectsOutputToContain('Sent 0 showing reminder(s).');
+        $this->artisan('app-inmobiliaria:showings:reminders')->expectsOutputToContain('Sent 1 showing reminder(s).');
+        $this->artisan('app-inmobiliaria:showings:reminders')->expectsOutputToContain('Sent 0 showing reminder(s).');
         Notification::assertSentToTimes($buyer, ShowingReminderNotification::class, 1);
         Notification::assertSentTo($this->agentUser, ShowingReminderNotification::class, fn ($n) => $n->window === '24h');
 
         $this->travelTo(Carbon::parse('2027-03-11 13:15:00', 'UTC'));
-        $this->artisan('hitlease:showings:reminders')->expectsOutputToContain('Sent 1 showing reminder(s).');
+        $this->artisan('app-inmobiliaria:showings:reminders')->expectsOutputToContain('Sent 1 showing reminder(s).');
         Notification::assertSentTo($buyer, ShowingReminderNotification::class, fn ($n) => $n->window === '1h');
 
         $this->travelTo(Carbon::parse('2027-03-11 14:40:00', 'UTC'));

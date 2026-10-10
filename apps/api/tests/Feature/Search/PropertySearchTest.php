@@ -117,21 +117,21 @@ class PropertySearchTest extends TestCase
 
     public function test_ssr_requests_are_rate_limited_per_forwarded_visitor_only_with_the_shared_key(): void
     {
-        config(['hitlease.security.ssr_key' => 'test-ssr-key']);
+        config(['app_inmobiliaria.security.ssr_key' => 'test-ssr-key']);
         RateLimiter::clear('search:ssr:203.0.113.7');
 
         for ($i = 0; $i < 60; $i++) {
-            $this->getJson('/api/v1/properties', ['X-Hitlease-SSR-Key' => 'test-ssr-key', 'X-Hitlease-Client-IP' => '203.0.113.7'])->assertOk();
+            $this->getJson('/api/v1/properties', ['X-App-Inmobiliaria-SSR-Key' => 'test-ssr-key', 'X-App-Inmobiliaria-Client-IP' => '203.0.113.7'])->assertOk();
         }
         // That visitor is throttled; another visitor behind the same web server is not.
-        $this->getJson('/api/v1/properties', ['X-Hitlease-SSR-Key' => 'test-ssr-key', 'X-Hitlease-Client-IP' => '203.0.113.7'])->assertStatus(429);
-        $this->getJson('/api/v1/properties', ['X-Hitlease-SSR-Key' => 'test-ssr-key', 'X-Hitlease-Client-IP' => '203.0.113.8'])->assertOk();
+        $this->getJson('/api/v1/properties', ['X-App-Inmobiliaria-SSR-Key' => 'test-ssr-key', 'X-App-Inmobiliaria-Client-IP' => '203.0.113.7'])->assertStatus(429);
+        $this->getJson('/api/v1/properties', ['X-App-Inmobiliaria-SSR-Key' => 'test-ssr-key', 'X-App-Inmobiliaria-Client-IP' => '203.0.113.8'])->assertOk();
 
         // Without the key (or with a wrong one) the forwarded IP is ignored: the connection IP is used.
         $spoofed = Request::create('/api/v1/properties', 'GET', server: ['REMOTE_ADDR' => '198.51.100.1']);
-        $spoofed->headers->set('X-Hitlease-Client-IP', '203.0.113.9');
+        $spoofed->headers->set('X-App-Inmobiliaria-Client-IP', '203.0.113.9');
         $this->assertSame('198.51.100.1', AppServiceProvider::clientKey($spoofed));
-        $spoofed->headers->set('X-Hitlease-SSR-Key', 'wrong-key');
+        $spoofed->headers->set('X-App-Inmobiliaria-SSR-Key', 'wrong-key');
         $this->assertSame('198.51.100.1', AppServiceProvider::clientKey($spoofed));
     }
 }

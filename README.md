@@ -1,4 +1,4 @@
-# Hitlease Real Estate
+# App Inmobiliaria Real Estate
 
 Brokerage platform for a New Jersey real estate agency: listings (own + authorized MLS feeds),
 agents, CRM, showings, offers, transactions and documents — with a web app, Android/iOS apps and a

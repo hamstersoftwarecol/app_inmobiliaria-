@@ -37,7 +37,7 @@ class AuthRepository {
   final Dio _dio;
   final String _deviceName;
 
-  static String _defaultDeviceName() => 'Hitlease Mobile (${defaultTargetPlatform.name})';
+  static String _defaultDeviceName() => 'App Inmobiliaria Mobile (${defaultTargetPlatform.name})';
 
   Future<AuthResult> login({required String email, required String password, String? mfaCode}) => guardApi(() async {
     final response = await _dio.post<Map<String, dynamic>>(

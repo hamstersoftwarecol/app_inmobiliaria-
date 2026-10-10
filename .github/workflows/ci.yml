@@ -28,20 +28,20 @@ jobs:
       postgres:
         image: postgis/postgis:16-3.4
         env:
-          POSTGRES_DB: hitlease_test
-          POSTGRES_USER: hitlease
-          POSTGRES_PASSWORD: hitlease
+          POSTGRES_DB: app_inmobiliaria_test
+          POSTGRES_USER: app_inmobiliaria
+          POSTGRES_PASSWORD: app_inmobiliaria
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U hitlease -d hitlease_test"
+          --health-cmd "pg_isready -U app_inmobiliaria -d app_inmobiliaria_test"
           --health-interval 5s --health-retries 20
       redis:
         image: redis:7.4-alpine
         ports: ["6379:6379"]
     env:
       DB_HOST: 127.0.0.1
-      DB_USERNAME: hitlease
-      DB_PASSWORD: hitlease
+      DB_USERNAME: app_inmobiliaria
+      DB_PASSWORD: app_inmobiliaria
     steps:
       - uses: actions/checkout@v4
       - uses: shivammathur/setup-php@v2
@@ -66,7 +66,7 @@ jobs:
           php artisan key:generate
       - name: Validate migrations (up, down, up)
         env:
-          DB_DATABASE: hitlease_test
+          DB_DATABASE: app_inmobiliaria_test
         run: |
           php artisan migrate --force
           php artisan migrate:rollback --force
@@ -74,7 +74,7 @@ jobs:
           php artisan db:wipe --force
       - name: Tests
         env:
-          DB_DATABASE: hitlease_test
+          DB_DATABASE: app_inmobiliaria_test
         run: php artisan test
 
   web:
@@ -109,12 +109,12 @@ jobs:
       postgres:
         image: postgis/postgis:16-3.4
         env:
-          POSTGRES_DB: hitlease
-          POSTGRES_USER: hitlease
-          POSTGRES_PASSWORD: hitlease
+          POSTGRES_DB: app_inmobiliaria
+          POSTGRES_USER: app_inmobiliaria
+          POSTGRES_PASSWORD: app_inmobiliaria
         ports: ["5432:5432"]
         options: >-
-          --health-cmd "pg_isready -U hitlease -d hitlease"
+          --health-cmd "pg_isready -U app_inmobiliaria -d app_inmobiliaria"
           --health-interval 5s --health-retries 20
       redis:
         image: redis:7.4-alpine
@@ -136,7 +136,7 @@ jobs:
         run: |
           composer install --no-interaction --prefer-dist --no-progress
           cp .env.example .env
-          sed -i 's/^DB_PASSWORD=$/DB_PASSWORD=hitlease/' .env
+          sed -i 's/^DB_PASSWORD=$/DB_PASSWORD=app_inmobiliaria/' .env
           echo "SECURITY_AUTH_REQUESTS_PER_MINUTE=200" >> .env
           echo "QUEUE_CONNECTION=sync" >> .env
           echo "MAIL_MAILER=log" >> .env
@@ -216,14 +216,14 @@ jobs:
           context: .
           file: infrastructure/docker/api/Dockerfile
           push: false
-          tags: hitlease/api:ci
+          tags: app-inmobiliaria/api:ci
       - name: Build web image
         uses: docker/build-push-action@v6
         with:
           context: .
           file: infrastructure/docker/web/Dockerfile
           push: false
-          tags: hitlease/web:ci
+          tags: app-inmobiliaria/web:ci
           build-args: |
             NEXT_PUBLIC_API_URL=https://api.example.com
             NEXT_PUBLIC_SITE_URL=https://www.example.com

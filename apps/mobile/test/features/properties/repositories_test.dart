@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hitlease_mobile/core/network/api_client.dart';
-import 'package:hitlease_mobile/core/storage/token_storage.dart';
-import 'package:hitlease_mobile/features/deals/data/deal_repository.dart';
-import 'package:hitlease_mobile/features/messages/data/message_repository.dart';
-import 'package:hitlease_mobile/features/properties/data/property_repository.dart';
-import 'package:hitlease_mobile/features/properties/domain/property.dart';
-import 'package:hitlease_mobile/features/showings/data/showing_repository.dart';
+import 'package:app_inmobiliaria_mobile/core/network/api_client.dart';
+import 'package:app_inmobiliaria_mobile/core/storage/token_storage.dart';
+import 'package:app_inmobiliaria_mobile/features/deals/data/deal_repository.dart';
+import 'package:app_inmobiliaria_mobile/features/messages/data/message_repository.dart';
+import 'package:app_inmobiliaria_mobile/features/properties/data/property_repository.dart';
+import 'package:app_inmobiliaria_mobile/features/properties/domain/property.dart';
+import 'package:app_inmobiliaria_mobile/features/showings/data/showing_repository.dart';
 
 import '../../helpers/app.dart';
 import '../../helpers/fake_http_adapter.dart';
@@ -20,7 +20,7 @@ void main() {
 
     final result = await container.read(propertyRepositoryProvider).search(const SearchFilters(city: 'Hoboken'));
 
-    expect(adapter.requests.single.headers['X-Hitlease-Client'], 'mobile');
+    expect(adapter.requests.single.headers['X-App-Inmobiliaria-Client'], 'mobile');
     expect(adapter.requests.single.uri.queryParameters, {'city': 'Hoboken'});
     expect(result.items.single.compliance?.attribution, 'Listing courtesy of Example Realty');
     expect(result.items.single.bathrooms, 2.5);

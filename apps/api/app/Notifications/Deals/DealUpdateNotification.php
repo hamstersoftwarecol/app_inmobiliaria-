@@ -43,7 +43,7 @@ class DealUpdateNotification extends Notification implements ShouldQueue
         return $this->withUnsubscribe((new MailMessage)
             ->subject($this->summary)
             ->line($this->summary)
-            ->action('Open in Hitlease', config('hitlease.frontend_url').$this->path), $notifiable);
+            ->action('Open in App Inmobiliaria', config('app_inmobiliaria.frontend_url').$this->path), $notifiable);
     }
 
     /**

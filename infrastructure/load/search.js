@@ -4,7 +4,7 @@
 //   docker run --rm -i --network host -e BASE_URL=http://localhost:8000 grafana/k6:0.54.0 run - < infrastructure/load/search.js
 //
 // Run against staging (never production without a change window). Each virtual user carries a
-// distinct X-Hitlease-Client-IP only when SSR_KEY is set (simulating server-rendered traffic);
+// distinct X-App-Inmobiliaria-Client-IP only when SSR_KEY is set (simulating server-rendered traffic);
 // otherwise all traffic comes from one IP and the per-IP search limiter (60/min) is what you test.
 import http from "k6/http";
 import { check, sleep } from "k6";
@@ -37,8 +37,8 @@ export const options = {
 function headers(vu) {
   const h = { Accept: "application/json" };
   if (SSR_KEY) {
-    h["X-Hitlease-SSR-Key"] = SSR_KEY;
-    h["X-Hitlease-Client-IP"] = `10.0.${Math.floor(vu / 250)}.${vu % 250}`;
+    h["X-App-Inmobiliaria-SSR-Key"] = SSR_KEY;
+    h["X-App-Inmobiliaria-Client-IP"] = `10.0.${Math.floor(vu / 250)}.${vu % 250}`;
   }
   return { headers: h };
 }

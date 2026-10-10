@@ -27,7 +27,7 @@
 ## Commands
 | | Command |
 |---|---|
-| API tests | `cd apps/api && php artisan test` (PostgreSQL+PostGIS `hitlease_test`) |
+| API tests | `cd apps/api && php artisan test` (PostgreSQL+PostGIS `app_inmobiliaria_test`) |
 | API style | `cd apps/api && vendor/bin/pint` |
 | Web | `cd apps/web && npm run lint && npm run typecheck && npm test` |
 | Web E2E | `cd apps/web && npm run build && npm run test:e2e` (API running on :8000) |

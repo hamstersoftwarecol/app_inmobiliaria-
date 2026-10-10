@@ -47,7 +47,7 @@ class VerifyEmailNotification extends Notification implements ShouldQueue
         $hash = array_pop($segments);
         $id = array_pop($segments);
 
-        return config('hitlease.frontend_url').'/verify-email?'.http_build_query(
+        return config('app_inmobiliaria.frontend_url').'/verify-email?'.http_build_query(
             ['id' => $id, 'hash' => $hash] + $query,
         );
     }
@@ -55,7 +55,7 @@ class VerifyEmailNotification extends Notification implements ShouldQueue
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Verify your Hitlease Real Estate e-mail address')
+            ->subject('Verify your App Inmobiliaria Real Estate e-mail address')
             ->line('Please confirm your e-mail address to activate all account features.')
             ->action('Verify e-mail address', $this->verificationUrl($notifiable))
             ->line('If you did not create an account, no further action is required.');

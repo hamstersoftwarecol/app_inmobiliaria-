@@ -14,7 +14,7 @@ final class AgencyClock
 {
     public static function today(): Carbon
     {
-        return Carbon::now(config('hitlease.agency_timezone', 'America/New_York'))->startOfDay();
+        return Carbon::now(config('app_inmobiliaria.agency_timezone', 'America/New_York'))->startOfDay();
     }
 
     public static function todayString(): string

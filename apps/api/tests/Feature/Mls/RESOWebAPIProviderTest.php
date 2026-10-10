@@ -154,7 +154,7 @@ class RESOWebAPIProviderTest extends TestCase
         $connection = $this->connection('production');
         $resolver = app(MLSConnectionResolver::class);
 
-        config(['hitlease.mls.sync_enabled' => false]);
+        config(['app_inmobiliaria.mls.sync_enabled' => false]);
         try {
             $resolver->resolve($connection);
             $this->fail('Expected sync disabled');
@@ -162,7 +162,7 @@ class RESOWebAPIProviderTest extends TestCase
             $this->assertSame('mls_sync_disabled', $e->errorCode);
         }
 
-        config(['hitlease.mls.sync_enabled' => true]);
+        config(['app_inmobiliaria.mls.sync_enabled' => true]);
         try {
             $resolver->resolve($connection);
             $this->fail('Expected not authorized');

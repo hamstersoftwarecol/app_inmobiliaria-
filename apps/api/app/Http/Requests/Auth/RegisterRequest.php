@@ -23,7 +23,7 @@ class RegisterRequest extends FormRequest
             'phone' => ['nullable', 'string', 'regex:/^\+?[0-9 ().-]{7,20}$/'],
             'password' => ['required', 'confirmed', Password::defaults()],
             'locale' => ['nullable', Rule::in(['en', 'es'])],
-            'account_type' => ['nullable', Rule::in(config('hitlease.security.self_registration_roles'))],
+            'account_type' => ['nullable', Rule::in(config('app_inmobiliaria.security.self_registration_roles'))],
             'device_name' => ['nullable', 'string', 'max:100'],
             'accept_terms' => ['accepted'],
         ];

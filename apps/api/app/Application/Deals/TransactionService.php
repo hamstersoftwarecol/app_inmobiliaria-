@@ -61,7 +61,7 @@ final class TransactionService
             $transaction->milestones()->where('type', MilestoneType::Closing->value)->whereNull('completed_at')
                 ->update(['completed_at' => now(), 'completed_by' => $actor->id]);
             // Record keeping: documents are retained for the configured period after closing.
-            $transaction->documents()->update(['retain_until' => Carbon::parse($closing)->addYears((int) config('hitlease.documents.retention_years', 6))->toDateString()]);
+            $transaction->documents()->update(['retain_until' => Carbon::parse($closing)->addYears((int) config('app_inmobiliaria.documents.retention_years', 6))->toDateString()]);
             $this->setListingStatus($transaction, ListingStatus::Closed, $actor);
             $this->audit->log(AuditCategory::Data, 'transactions.closed', $actor, $transaction, null, ['closing_date' => $closing]);
             $this->notifyAgents($transaction, $actor, 'transaction.closed', "Transaction closed: {$transaction->property?->title}");
@@ -77,7 +77,7 @@ final class TransactionService
         return DB::transaction(function () use ($actor, $transaction, $reason) {
             $transaction->forceFill(['status' => TransactionStatus::Cancelled, 'cancelled_at' => now(), 'cancel_reason' => $reason])->save();
             $transaction->offer?->forceFill(['status' => OfferStatus::Terminated])->save();
-            $transaction->documents()->update(['retain_until' => AgencyClock::today()->addYears((int) config('hitlease.documents.retention_years', 6))->toDateString()]);
+            $transaction->documents()->update(['retain_until' => AgencyClock::today()->addYears((int) config('app_inmobiliaria.documents.retention_years', 6))->toDateString()]);
             $this->setListingStatus($transaction, ListingStatus::Active, $actor);
             $this->audit->log(AuditCategory::Data, 'transactions.cancelled', $actor, $transaction, null, ['reason' => $reason]);
             $this->notifyAgents($transaction, $actor, 'transaction.cancelled', "Transaction cancelled: {$transaction->property?->title}");

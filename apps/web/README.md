@@ -1,4 +1,4 @@
-# Hitlease Real Estate — Web (Next.js)
+# App Inmobiliaria Real Estate — Web (Next.js)
 
 Next.js 15 (App Router) + TypeScript + Tailwind CSS 4 + shadcn/ui-style components,
 TanStack Query, Zustand, React Hook Form + Zod. English (default) and Spanish.

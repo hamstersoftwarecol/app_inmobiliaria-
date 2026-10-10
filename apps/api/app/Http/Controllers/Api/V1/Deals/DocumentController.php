@@ -36,7 +36,7 @@ class DocumentController extends Controller
         return DocumentResource::collection($list)->additional(['meta' => [
             'can_upload' => Gate::allows('createFor', [Document::class, $transaction]),
             'scan_required' => $this->documents->scanRequired(),
-            'max_kb' => (int) config('hitlease.documents.max_kilobytes'),
+            'max_kb' => (int) config('app_inmobiliaria.documents.max_kilobytes'),
         ]]);
     }
 
@@ -44,7 +44,7 @@ class DocumentController extends Controller
     {
         Gate::authorize('createFor', [Document::class, $transaction]);
         $data = $request->validate([
-            'file' => ['required', 'file', 'mimes:'.self::MIMES, 'max:'.(int) config('hitlease.documents.max_kilobytes')],
+            'file' => ['required', 'file', 'mimes:'.self::MIMES, 'max:'.(int) config('app_inmobiliaria.documents.max_kilobytes')],
             'title' => ['required', 'string', 'max:200'],
             'category' => ['required', Rule::enum(DocumentCategory::class)],
             'visibility' => ['required', Rule::in(['internal', 'shared'])],
@@ -58,7 +58,7 @@ class DocumentController extends Controller
     public function storeVersion(Request $request, Document $document): JsonResponse
     {
         Gate::authorize('manage', $document);
-        $request->validate(['file' => ['required', 'file', 'mimes:'.self::MIMES, 'max:'.(int) config('hitlease.documents.max_kilobytes')]]);
+        $request->validate(['file' => ['required', 'file', 'mimes:'.self::MIMES, 'max:'.(int) config('app_inmobiliaria.documents.max_kilobytes')]]);
         $this->documents->addVersion($request->user(), $document, $request->file('file'));
 
         return (new DocumentResource($document->load('versions.uploader')))->response()->setStatusCode(201);
@@ -93,7 +93,7 @@ class DocumentController extends Controller
 
         return response()->json(['data' => [
             'url' => $url,
-            'expires_at' => now()->addMinutes((int) config('hitlease.documents.link_minutes', 5))->toIso8601String(),
+            'expires_at' => now()->addMinutes((int) config('app_inmobiliaria.documents.link_minutes', 5))->toIso8601String(),
         ]]);
     }
 

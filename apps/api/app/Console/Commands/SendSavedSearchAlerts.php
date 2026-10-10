@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 
 class SendSavedSearchAlerts extends Command
 {
-    protected $signature = 'hitlease:saved-searches:alert {--frequency=daily : daily or weekly}';
+    protected $signature = 'app-inmobiliaria:saved-searches:alert {--frequency=daily : daily or weekly}';
 
     protected $description = 'Notify users about new listings matching their saved searches';
 

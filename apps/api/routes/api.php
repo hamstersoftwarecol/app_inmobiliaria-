@@ -39,7 +39,7 @@ use App\Http\Controllers\Api\V1\System\HealthController;
 use Illuminate\Support\Facades\Route;
 
 /*
-| Hitlease Real Estate REST API — v1. Contract: docs/api/openapi.yaml
+| App Inmobiliaria Real Estate REST API — v1. Contract: docs/api/openapi.yaml
 */
 // Probes stay outside the rate limiter (which needs the cache): readiness must answer even when
 // a dependency is down. Both are cheap and reveal no details.

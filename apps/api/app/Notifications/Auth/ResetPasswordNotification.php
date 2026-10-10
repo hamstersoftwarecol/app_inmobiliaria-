@@ -29,7 +29,7 @@ class ResetPasswordNotification extends Notification implements ShouldQueue
 
     public function resetUrl(object $notifiable): string
     {
-        return config('hitlease.frontend_url').'/reset-password?'.http_build_query([
+        return config('app_inmobiliaria.frontend_url').'/reset-password?'.http_build_query([
             'token' => $this->token,
             'email' => $notifiable->getEmailForPasswordReset(),
         ]);
@@ -40,7 +40,7 @@ class ResetPasswordNotification extends Notification implements ShouldQueue
         $minutes = config('auth.passwords.users.expire');
 
         return (new MailMessage)
-            ->subject('Reset your Hitlease Real Estate password')
+            ->subject('Reset your App Inmobiliaria Real Estate password')
             ->line('We received a request to reset the password for your account.')
             ->action('Reset password', $this->resetUrl($notifiable))
             ->line("This link expires in {$minutes} minutes.")

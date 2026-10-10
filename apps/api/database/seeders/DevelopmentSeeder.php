@@ -19,7 +19,7 @@ use RuntimeException;
 
 /**
  * Local development data ONLY. Refuses to run in staging/production.
- * Creates one account per role (@hitlease.test, a reserved TLD) and the MLS
+ * Creates one account per role (@app-inmobiliaria.test, a reserved TLD) and the MLS
  * provider catalogue in "pending_authorization" state.
  */
 class DevelopmentSeeder extends Seeder
@@ -34,7 +34,7 @@ class DevelopmentSeeder extends Seeder
 
         foreach (RoleName::cases() as $role) {
             $user = User::query()->firstOrCreate(
-                ['email' => str_replace('_', '.', $role->value).'@hitlease.test'],
+                ['email' => str_replace('_', '.', $role->value).'@app-inmobiliaria.test'],
                 [
                     'first_name' => 'Demo',
                     'last_name' => $role->displayName(),
@@ -60,8 +60,8 @@ class DevelopmentSeeder extends Seeder
 
         // Demo agency/office and agent profiles; licences start pending so the
         // verification workflow can be exercised locally.
-        $agency = Agency::query()->firstOrCreate(['slug' => 'hitlease-demo'], [
-            'name' => 'Hitlease Real Estate (demo)',
+        $agency = Agency::query()->firstOrCreate(['slug' => 'app-inmobiliaria-demo'], [
+            'name' => 'App Inmobiliaria Real Estate (demo)',
             'timezone' => 'America/New_York',
         ]);
         $office = Office::query()->firstOrCreate(['agency_id' => $agency->id, 'slug' => 'demo-office'], [
@@ -72,7 +72,7 @@ class DevelopmentSeeder extends Seeder
             'postal_code' => '07601',
             'is_headquarters' => true,
         ]);
-        foreach (['agent@hitlease.test', 'broker@hitlease.test'] as $email) {
+        foreach (['agent@app-inmobiliaria.test', 'broker@app-inmobiliaria.test'] as $email) {
             $user = User::query()->where('email', $email)->firstOrFail();
             if (! $user->agentProfile()->exists()) {
                 $agent = new Agent(['office_id' => $office->id, 'languages' => ['en', 'es'], 'is_public' => true]);
@@ -84,7 +84,7 @@ class DevelopmentSeeder extends Seeder
         }
 
         // Demo internal listings (fictitious addresses) for local UI work.
-        $demoAgent = Agent::query()->whereHas('user', fn ($q) => $q->where('email', 'agent@hitlease.test'))->first();
+        $demoAgent = Agent::query()->whereHas('user', fn ($q) => $q->where('email', 'agent@app-inmobiliaria.test'))->first();
         foreach ([
             ['slug' => 'demo-100-example-avenue-hackensack', 'title' => 'Demo: renovated colonial', 'type' => 'single_family', 'price' => 689000, 'street' => '100 Example Avenue', 'city' => 'Hackensack', 'zip' => '07601', 'lat' => 40.8859, 'lng' => -74.0435, 'listing' => 'sale'],
             ['slug' => 'demo-200-sample-street-jersey-city', 'title' => 'Demo: waterfront condo for rent', 'type' => 'condominium', 'price' => 3200, 'street' => '200 Sample Street', 'city' => 'Jersey City', 'zip' => '07302', 'lat' => 40.7178, 'lng' => -74.0431, 'listing' => 'rent'],
@@ -99,6 +99,6 @@ class DevelopmentSeeder extends Seeder
             ]);
         }
 
-        $this->command?->warn("Development accounts (<role>@hitlease.test) password: {$password}");
+        $this->command?->warn("Development accounts (<role>@app-inmobiliaria.test) password: {$password}");
     }
 }

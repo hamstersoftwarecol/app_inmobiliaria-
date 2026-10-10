@@ -17,7 +17,7 @@ final class ShowingCalendar
         return implode("\r\n", [
             'BEGIN:VCALENDAR',
             'VERSION:2.0',
-            'PRODID:-//Hitlease Real Estate//Showings//EN',
+            'PRODID:-//App Inmobiliaria Real Estate//Showings//EN',
             'METHOD:PUBLISH',
             'BEGIN:VEVENT',
             'UID:showing-'.$a->id.'@'.parse_url((string) config('app.url'), PHP_URL_HOST),

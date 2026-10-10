@@ -1,4 +1,4 @@
-# Hitlease Real Estate — Mobile (Flutter)
+# App Inmobiliaria Real Estate — Mobile (Flutter)
 
 Android + iOS app. Flutter 3.47 (stable), Riverpod 3, GoRouter, Dio, Freezed +
 json_serializable, flutter_secure_storage. English (default) and Spanish.

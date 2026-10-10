@@ -81,7 +81,7 @@ class RESOWebAPIProvider implements MLSProviderInterface
         $query = array_filter([
             '$filter' => $clauses !== [] ? implode(' and ', $clauses) : null,
             '$orderby' => 'ModificationTimestamp asc,ListingKey asc',
-            '$top' => (int) ($filters['page_size'] ?? config('hitlease.mls.default_page_size', 200)),
+            '$top' => (int) ($filters['page_size'] ?? config('app_inmobiliaria.mls.default_page_size', 200)),
         ]);
 
         $url = $this->url('Property');
@@ -127,7 +127,7 @@ class RESOWebAPIProvider implements MLSProviderInterface
      */
     public function fetchChanges(?string $cursor = null): MLSChangeBatch
     {
-        $pageSize = (int) config('hitlease.mls.default_page_size', 200);
+        $pageSize = (int) config('app_inmobiliaria.mls.default_page_size', 200);
         $filter = null;
 
         if ($cursor !== null && $cursor !== '') {

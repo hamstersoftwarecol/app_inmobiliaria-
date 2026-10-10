@@ -14,7 +14,7 @@ trait MlsTestHelpers
      */
     protected function authorizedConnection(string $driver = 'fixture', array $rules = [], string $environment = 'production'): MlsConnection
     {
-        config(['hitlease.mls.sync_enabled' => true]);
+        config(['app_inmobiliaria.mls.sync_enabled' => true]);
 
         $provider = MlsProvider::create(['code' => 'test_'.$driver.'_'.uniqid(), 'name' => 'Test MLS', 'driver' => $driver, 'protocol' => 'reso_web_api']);
         $provider->forceFill(['status' => ProviderStatus::Authorized, 'is_enabled' => true])->save();

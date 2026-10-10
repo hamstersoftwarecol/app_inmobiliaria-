@@ -80,7 +80,7 @@ class Agent extends Model
     /** The agency's IANA zone: weekly availability windows are expressed in it. */
     public function timezone(): string
     {
-        return $this->agency?->timezone ?: (string) config('hitlease.agency_timezone');
+        return $this->agency?->timezone ?: (string) config('app_inmobiliaria.agency_timezone');
     }
 
     /**

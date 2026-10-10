@@ -79,7 +79,7 @@ class NotificationCenterTest extends TestCase
         app(NotificationPreferences::class)->set($user, NotificationEvent::TaskReminders, false);
         CrmTask::query()->create(['assigned_to' => $user->id, 'title' => 'Soon', 'due_at' => now()->addMinutes(5)]);
 
-        $this->artisan('hitlease:crm:task-reminders');
+        $this->artisan('app-inmobiliaria:crm:task-reminders');
 
         Notification::assertSentTo($user, TaskReminderNotification::class, fn ($n, $channels) => $channels === ['database']);
     }

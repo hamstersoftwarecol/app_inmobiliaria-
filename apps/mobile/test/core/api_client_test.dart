@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hitlease_mobile/core/network/api_client.dart';
-import 'package:hitlease_mobile/core/network/api_exception.dart';
-import 'package:hitlease_mobile/core/storage/token_storage.dart';
+import 'package:app_inmobiliaria_mobile/core/network/api_client.dart';
+import 'package:app_inmobiliaria_mobile/core/network/api_exception.dart';
+import 'package:app_inmobiliaria_mobile/core/storage/token_storage.dart';
 
 import '../helpers/fake_http_adapter.dart';
 

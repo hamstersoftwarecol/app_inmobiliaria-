@@ -87,7 +87,7 @@ class MlsSyncPipelineTest extends TestCase
     public function test_sync_is_refused_without_licence_gate(): void
     {
         $connection = $this->authorizedConnection();
-        config(['hitlease.mls.sync_enabled' => false]);
+        config(['app_inmobiliaria.mls.sync_enabled' => false]);
 
         $this->actingAsRole(RoleName::SuperAdmin);
         $this->postJson('/api/v1/admin/mls/sync', ['connection_id' => $connection->id, 'type' => 'incremental'])
@@ -212,12 +212,12 @@ class MlsSyncPipelineTest extends TestCase
         $fresh->forceFill(['last_synced_at' => now()])->save();
         $sandbox = $this->authorizedConnection(environment: 'sandbox');
 
-        $this->artisan('hitlease:mls:sync-due')->expectsOutputToContain('Queued 1 incremental sync(s).')->assertSuccessful();
+        $this->artisan('app-inmobiliaria:mls:sync-due')->expectsOutputToContain('Queued 1 incremental sync(s).')->assertSuccessful();
 
         $this->assertSame([$due->id], MlsSyncJob::pluck('mls_connection_id')->all());
 
-        config(['hitlease.mls.sync_enabled' => false]);
-        $this->artisan('hitlease:mls:sync-due')->expectsOutputToContain('disabled')->assertSuccessful();
+        config(['app_inmobiliaria.mls.sync_enabled' => false]);
+        $this->artisan('app-inmobiliaria:mls:sync-due')->expectsOutputToContain('disabled')->assertSuccessful();
         unset($sandbox);
     }
 

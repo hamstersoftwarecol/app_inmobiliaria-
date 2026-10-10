@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hitlease_mobile/core/l10n/app_localizations.dart';
-import 'package:hitlease_mobile/features/notifications/domain/app_notification.dart';
+import 'package:app_inmobiliaria_mobile/core/l10n/app_localizations.dart';
+import 'package:app_inmobiliaria_mobile/features/notifications/domain/app_notification.dart';
 
 void main() {
   AppNotification n(String type, Map<String, dynamic> data) => AppNotification(id: '1', type: type, data: data);

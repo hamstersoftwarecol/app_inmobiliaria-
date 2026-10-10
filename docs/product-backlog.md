@@ -120,7 +120,7 @@ by the parties' attorneys (stated in the UI).
 
 | ID | Item | Pri | Status | Evidence |
 |---|---|---|---|---|
-| MOB-1 | Search with city/ZIP autocomplete, filters (type, price, beds, baths), sorting, infinite scroll; `X-Hitlease-Client: mobile` so MLS mobile display rules apply | P0 | ✅ | `search_screen_test`, `repositories_test` |
+| MOB-1 | Search with city/ZIP autocomplete, filters (type, price, beds, baths), sorting, infinite scroll; `X-App-Inmobiliaria-Client: mobile` so MLS mobile display rules apply | P0 | ✅ | `search_screen_test`, `repositories_test` |
 | MOB-2 | Listing detail: gallery, facts, MLS attribution/disclaimer, agent contact (call/e-mail), favorites | P0 | ✅ | `search_screen_test` |
 | MOB-3 | Favorites and saved searches (create from a search, alert frequency, replay, delete) | P0 | ✅ | `search_filters_test` |
 | MOB-4 | Showing requests (slots, consent, `Idempotency-Key`), my showings; agents confirm/decline/cancel | P0 | ✅ | `repositories_test` |

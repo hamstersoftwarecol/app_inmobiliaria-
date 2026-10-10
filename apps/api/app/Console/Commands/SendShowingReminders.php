@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 
 class SendShowingReminders extends Command
 {
-    protected $signature = 'hitlease:showings:reminders';
+    protected $signature = 'app-inmobiliaria:showings:reminders';
 
     protected $description = 'Remind visitors and agents 24 hours and 1 hour before confirmed showings';
 

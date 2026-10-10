@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hitlease_mobile/features/account/presentation/account_screens.dart';
+import 'package:app_inmobiliaria_mobile/features/account/presentation/account_screens.dart';
 
 import '../../helpers/app.dart';
 import '../../helpers/fake_http_adapter.dart';
@@ -43,7 +43,7 @@ void main() {
             {
               'id': 'token:1',
               'type': 'token',
-              'name': 'Hitlease Mobile (android)',
+              'name': 'App Inmobiliaria Mobile (android)',
               'last_used_at': null,
               'is_current': true,
             },

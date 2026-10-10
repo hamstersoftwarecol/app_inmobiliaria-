@@ -16,18 +16,18 @@ PostGIS 3, Redis 7, Flutter 3.47.
 
 ```bash
 # Database (once)
-createuser -P hitlease            # choose a local password
-createdb -O hitlease hitlease
-createdb -O hitlease hitlease_test
-psql -d hitlease -c 'CREATE EXTENSION IF NOT EXISTS postgis'
-psql -d hitlease_test -c 'CREATE EXTENSION IF NOT EXISTS postgis'
+createuser -P app_inmobiliaria            # choose a local password
+createdb -O app_inmobiliaria app_inmobiliaria
+createdb -O app_inmobiliaria app_inmobiliaria_test
+psql -d app_inmobiliaria -c 'CREATE EXTENSION IF NOT EXISTS postgis'
+psql -d app_inmobiliaria_test -c 'CREATE EXTENSION IF NOT EXISTS postgis'
 
 # API — http://localhost:8000
 cd apps/api
 cp .env.example .env              # set DB_PASSWORD
 composer install
 php artisan key:generate
-php artisan migrate --seed        # prints the demo accounts' password (<role>@hitlease.test)
+php artisan migrate --seed        # prints the demo accounts' password (<role>@app-inmobiliaria.test)
 php artisan serve
 php artisan storage:link          # serves listing photos from storage/app/public
 php artisan queue:work redis --queue=default,notifications,mls-sync,mls-media
@@ -40,7 +40,7 @@ cd apps/web && cp .env.example .env.local && npm ci && npm run dev
 cd apps/mobile && flutter pub get && flutter run --dart-define=API_BASE_URL=http://10.0.2.2:8000
 ```
 
-Tests: `php artisan test` (needs `hitlease_test` DB), `npm test`, `flutter test`.
+Tests: `php artisan test` (needs `app_inmobiliaria_test` DB), `npm test`, `flutter test`.
 E2E: `php artisan db:seed --class=E2ESeeder` (fictitious data; refuses non-local envs), API on :8000,
 then `npm run build && npm run test:e2e`. The broker tests mutate the seed — re-seed before re-running
 (the seeder also removes photos uploaded by earlier runs). Repeated runs within an hour can trip the
@@ -78,19 +78,19 @@ the `api-media` volume (`MEDIA_DISK=public`) and nginx serves them read-only und
 * Migrations run **once per release** from the pipeline (`php artisan migrate --force`) before
   rolling out new containers; then `db:seed --class=RolesAndPermissionsSeeder --force` (idempotent).
 * Scheduler must run (`php artisan schedule:work` / cron `schedule:run` every minute): it expires
-  agent licences daily at 00:15 America/New_York (`hitlease:licenses:expire`), queues due MLS syncs
-  every 5 minutes (`hitlease:mls:sync-due`) and a nightly reconcile at 03:30 America/New_York.
+  agent licences daily at 00:15 America/New_York (`app-inmobiliaria:licenses:expire`), queues due MLS syncs
+  every 5 minutes (`app-inmobiliaria:mls:sync-due`) and a nightly reconcile at 03:30 America/New_York.
   These MLS commands do nothing until `MLS_SYNC_ENABLED=true` and a provider is authorized.
-  CRM task reminders and showing reminders run every 5 minutes (`hitlease:crm:task-reminders`,
-  `hitlease:showings:reminders`); expired idempotency keys are pruned hourly. Offers past their
-  deadline expire every 5 minutes (`hitlease:offers:expire`) and milestone reminders go out daily
-  at 07:40 America/New_York (`hitlease:transactions:milestone-reminders`). The document retention
-  purge (`hitlease:documents:purge`, dry run unless `--force`) is deliberately **not** scheduled
+  CRM task reminders and showing reminders run every 5 minutes (`app-inmobiliaria:crm:task-reminders`,
+  `app-inmobiliaria:showings:reminders`); expired idempotency keys are pruned hourly. Offers past their
+  deadline expire every 5 minutes (`app-inmobiliaria:offers:expire`) and milestone reminders go out daily
+  at 07:40 America/New_York (`app-inmobiliaria:transactions:milestone-reminders`). The document retention
+  purge (`app-inmobiliaria:documents:purge`, dry run unless `--force`) is deliberately **not** scheduled
   until counsel confirms the retention period.
 * The database user must be able to `CREATE EXTENSION btree_gist` (trusted extension, available in
   the `postgis/postgis` image) for the showings migration, or a DBA creates it beforehand.
   Saved-search alerts run daily at 07:45 and weekly on Mondays at 07:50 America/New_York
-  (`hitlease:saved-searches:alert --frequency=daily|weekly`).
+  (`app-inmobiliaria:saved-searches:alert --frequency=daily|weekly`).
 * Set the same random `API_SSR_KEY` (`openssl rand -hex 32`) on the API and the web server so
   server-rendered pages are rate-limited per visitor instead of per web server. Without it, all SSR
   traffic shares the web server's limit.

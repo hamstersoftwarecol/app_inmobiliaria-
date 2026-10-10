@@ -23,10 +23,10 @@ final class ShowingSlots
     {
         $now ??= now();
         $tz = $agent->timezone();
-        $duration = (int) config('hitlease.showings.duration_minutes', 30);
-        $step = max(5, (int) config('hitlease.showings.slot_step_minutes', 30));
-        $earliest = $now->copy()->addHours((int) config('hitlease.showings.min_notice_hours', 2));
-        $latestDay = $now->copy()->setTimezone($tz)->startOfDay()->addDays((int) config('hitlease.showings.max_days_ahead', 30));
+        $duration = (int) config('app_inmobiliaria.showings.duration_minutes', 30);
+        $step = max(5, (int) config('app_inmobiliaria.showings.slot_step_minutes', 30));
+        $earliest = $now->copy()->addHours((int) config('app_inmobiliaria.showings.min_notice_hours', 2));
+        $latestDay = $now->copy()->setTimezone($tz)->startOfDay()->addDays((int) config('app_inmobiliaria.showings.max_days_ahead', 30));
 
         $day = Carbon::createFromFormat('Y-m-d', $date, $tz)->startOfDay();
         if ($day->gt($latestDay) || $day->copy()->endOfDay()->lt($earliest)) {

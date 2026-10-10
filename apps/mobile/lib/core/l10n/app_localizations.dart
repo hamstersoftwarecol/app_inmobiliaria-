@@ -21,7 +21,7 @@ class AppLocalizations {
   @visibleForTesting
   static const Map<String, Map<String, String>> strings = {
     'en': {
-      'appName': 'Hitlease Real Estate',
+      'appName': 'App Inmobiliaria Real Estate',
       'tagline': 'Find your place in New Jersey',
       'email': 'Email address',
       'password': 'Password',
@@ -69,7 +69,7 @@ class AppLocalizations {
       ...screenStringsEn,
     },
     'es': {
-      'appName': 'Hitlease Real Estate',
+      'appName': 'App Inmobiliaria Real Estate',
       'tagline': 'Encuentra tu lugar en Nueva Jersey',
       'email': 'Correo electrónico',
       'password': 'Contraseña',

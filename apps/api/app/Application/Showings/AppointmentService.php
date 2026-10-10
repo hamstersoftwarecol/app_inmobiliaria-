@@ -70,7 +70,7 @@ final class AppointmentService
                 'contact_email' => $requester->email,
                 'contact_phone' => $phone ?: $requester->phone,
                 'starts_at' => $startsAt->copy()->utc(),
-                'ends_at' => $startsAt->copy()->utc()->addMinutes((int) config('hitlease.showings.duration_minutes', 30)),
+                'ends_at' => $startsAt->copy()->utc()->addMinutes((int) config('app_inmobiliaria.showings.duration_minutes', 30)),
                 'timezone' => $agent->timezone(),
                 'notes' => $notes,
             ]);
@@ -104,7 +104,7 @@ final class AppointmentService
                 'contact_email' => $data['contact_email'] ?? $lead?->email,
                 'contact_phone' => $data['contact_phone'] ?? $lead?->phone,
                 'starts_at' => $startsAt,
-                'ends_at' => $startsAt->copy()->addMinutes((int) ($data['duration_minutes'] ?? config('hitlease.showings.duration_minutes', 30))),
+                'ends_at' => $startsAt->copy()->addMinutes((int) ($data['duration_minutes'] ?? config('app_inmobiliaria.showings.duration_minutes', 30))),
                 'timezone' => $agent->timezone(),
                 'notes' => $data['notes'] ?? null,
             ]);

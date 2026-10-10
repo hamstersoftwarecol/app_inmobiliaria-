@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Restore a Hitlease database dump into a NEW database and verify it (restore drill).
+# Restore a App Inmobiliaria database dump into a NEW database and verify it (restore drill).
 #
 #   PGHOST=... PGUSER=... PGPASSWORD=... [PG_ADMIN_USER=... PG_ADMIN_PASSWORD=...] \
-#     infrastructure/scripts/restore.sh backups/hitlease-db-<stamp>.dump hitlease_restore
+#     infrastructure/scripts/restore.sh backups/app-inmobiliaria-db-<stamp>.dump app_inmobiliaria_restore
 #
 # PostGIS can only be created by a superuser (rds_superuser / cloudsqlsuperuser on managed
 # services): set PG_ADMIN_USER so the extensions are created first; the app role restores the rest.
@@ -15,7 +15,7 @@ dump="${1:?Usage: restore.sh <dump-file> <new-database-name>}"
 target="${2:?Usage: restore.sh <dump-file> <new-database-name>}"
 [[ "$target" =~ ^[a-z_][a-z0-9_]{0,62}$ ]] || { echo "Invalid database name: $target" >&2; exit 2; }
 
-sums="$(dirname "$dump")/$(basename "$dump" | sed -E 's/hitlease-db-(.*)\.dump/hitlease-\1.sha256/')"
+sums="$(dirname "$dump")/$(basename "$dump" | sed -E 's/app-inmobiliaria-db-(.*)\.dump/app-inmobiliaria-\1.sha256/')"
 if [[ -f "$sums" ]]; then
   (cd "$(dirname "$dump")" && grep " $(basename "$dump")\$" "$(basename "$sums")" | sha256sum --check --quiet) && echo "✓ checksum"
 else

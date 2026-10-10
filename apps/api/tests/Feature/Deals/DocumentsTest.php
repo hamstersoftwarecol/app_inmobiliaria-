@@ -134,7 +134,7 @@ class DocumentsTest extends TestCase
 
     public function test_with_a_scanner_files_are_downloadable_only_after_a_clean_scan(): void
     {
-        config(['hitlease.documents.scanner' => 'clamd']);
+        config(['app_inmobiliaria.documents.scanner' => 'clamd']);
         Queue::fake();
         Sanctum::actingAs($this->agentUser);
         $doc = $this->upload()->assertCreated()->assertJsonPath('data.versions.0.scan_status', 'pending')->json('data.id');
@@ -186,7 +186,7 @@ class DocumentsTest extends TestCase
 
     public function test_infected_scans_are_recorded_as_security_events(): void
     {
-        config(['hitlease.documents.scanner' => 'clamd']);
+        config(['app_inmobiliaria.documents.scanner' => 'clamd']);
         Queue::fake();
         Sanctum::actingAs($this->agentUser);
         $this->upload('internal', UploadedFile::fake()->createWithContent('bad.pdf', self::EICAR))->assertCreated();
@@ -216,10 +216,10 @@ class DocumentsTest extends TestCase
         $version = DocumentVersion::query()->sole();
         Document::query()->update(['retain_until' => '2020-01-01']);
 
-        $this->artisan('hitlease:documents:purge')->expectsOutputToContain('1 document(s) past retention (dry run')->assertSuccessful();
+        $this->artisan('app-inmobiliaria:documents:purge')->expectsOutputToContain('1 document(s) past retention (dry run')->assertSuccessful();
         Storage::disk('local')->assertExists($version->path);
 
-        $this->artisan('hitlease:documents:purge --force')->expectsOutput('Purged 1 document(s).')->assertSuccessful();
+        $this->artisan('app-inmobiliaria:documents:purge --force')->expectsOutput('Purged 1 document(s).')->assertSuccessful();
         Storage::disk('local')->assertMissing($version->path);
         $this->assertSame(0, Document::withTrashed()->count());
     }

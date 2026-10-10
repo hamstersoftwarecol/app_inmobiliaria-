@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hitlease_mobile/features/home/presentation/home_screen.dart';
-import 'package:hitlease_mobile/features/notifications/data/notification_repository.dart';
+import 'package:app_inmobiliaria_mobile/features/home/presentation/home_screen.dart';
+import 'package:app_inmobiliaria_mobile/features/notifications/data/notification_repository.dart';
 
 import '../../helpers/app.dart';
 import '../../helpers/fake_http_adapter.dart';

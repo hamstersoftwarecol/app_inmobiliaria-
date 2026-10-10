@@ -46,7 +46,7 @@ class ShowingSlotController extends Controller
         return response()->json(['data' => [
             'bookable' => true,
             'timezone' => $tz,
-            'duration_minutes' => (int) config('hitlease.showings.duration_minutes', 30),
+            'duration_minutes' => (int) config('app_inmobiliaria.showings.duration_minutes', 30),
             'days' => $days,
         ]]);
     }

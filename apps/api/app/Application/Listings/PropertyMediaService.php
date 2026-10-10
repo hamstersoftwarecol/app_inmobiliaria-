@@ -28,13 +28,13 @@ class PropertyMediaService
         if ($property->isMls()) {
             throw ListingException::mlsReadOnly();
         }
-        $max = (int) config('hitlease.media.max_photos', 50);
+        $max = (int) config('app_inmobiliaria.media.max_photos', 50);
         if ($property->media()->count() >= $max) {
             throw ListingException::mediaLimitReached($max);
         }
 
         [$binary, $mime, $extension, $width, $height] = $this->reencode($file);
-        $disk = (string) config('hitlease.media.disk', 'public');
+        $disk = (string) config('app_inmobiliaria.media.disk', 'public');
         $path = "properties/{$property->id}/".Str::uuid().".{$extension}";
         Storage::disk($disk)->put($path, $binary, ['visibility' => 'public']);
 

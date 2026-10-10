@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1.7
-# Hitlease Web — Next.js standalone server (SSR).
+# App Inmobiliaria Web — Next.js standalone server (SSR).
 
 FROM node:22-alpine AS deps
 WORKDIR /app

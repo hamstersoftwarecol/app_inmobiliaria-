@@ -18,5 +18,5 @@ void main() {
     ],
   );
 
-  runApp(UncontrolledProviderScope(container: container, child: const HitleaseApp()));
+  runApp(UncontrolledProviderScope(container: container, child: const AppInmobiliariaApp()));
 }

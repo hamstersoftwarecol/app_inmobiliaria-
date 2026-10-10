@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hitlease_mobile/features/agents/presentation/agents_screen.dart';
+import 'package:app_inmobiliaria_mobile/features/agents/presentation/agents_screen.dart';
 
 import '../../helpers/app.dart';
 import '../../helpers/fake_http_adapter.dart';
@@ -16,7 +16,7 @@ Map<String, dynamic> agentJson() => {
   'bio_es': 'Especialista en Hoboken.',
   'languages': ['en', 'es'],
   'specialties': ['condos'],
-  'agency': {'name': 'Hitlease Real Estate', 'license_number': null},
+  'agency': {'name': 'App Inmobiliaria Real Estate', 'license_number': null},
   'office': null,
   'license': {'type': 'salesperson', 'type_label': 'Salesperson', 'state': 'NJ', 'number': '1234567', 'verified': true},
 };

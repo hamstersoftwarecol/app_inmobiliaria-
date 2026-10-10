@@ -1,6 +1,6 @@
 # Operations runbooks
 
-Practical procedures for running Hitlease Real Estate. Commands assume the Docker Compose stack
+Practical procedures for running App Inmobiliaria Real Estate. Commands assume the Docker Compose stack
 (`docker compose exec api …`); on other platforms run the same `php artisan` commands in an API
 container. Times are America/New_York unless stated.
 
@@ -92,9 +92,9 @@ a documents archive and SHA-256 checksums; schedule it daily to encrypted off-si
 **Restore** (always into a *new* database, then switch):
 
 ```bash
-PGHOST=… PGUSER=hitlease PGPASSWORD=… PG_ADMIN_USER=<superuser> PG_ADMIN_PASSWORD=… \
-  infrastructure/scripts/restore.sh backups/hitlease-db-<stamp>.dump hitlease_restored
-tar -C <documents-volume> -xzf backups/hitlease-documents-<stamp>.tar.gz
+PGHOST=… PGUSER=app_inmobiliaria PGPASSWORD=… PG_ADMIN_USER=<superuser> PG_ADMIN_PASSWORD=… \
+  infrastructure/scripts/restore.sh backups/app-inmobiliaria-db-<stamp>.dump app_inmobiliaria_restored
+tar -C <documents-volume> -xzf backups/app-inmobiliaria-documents-<stamp>.tar.gz
 ```
 
 The script verifies the checksum, refuses to overwrite an existing database, creates PostGIS and
@@ -106,7 +106,7 @@ in a maintenance window and check `/health/ready`.
 
 | Date | Source | Result |
 |---|---|---|
-| 2026-10-10 | Local `hitlease` (17 migrations, 92 users, 5 listings, 961 audit entries) | Backup 0.3 s / 416 KB; restore 1 s; row counts identical; geography, `appointments_no_overlap` and PostGIS present; app read the copy (`migrate:status`, published listings). Found and fixed: PostGIS requires an admin role (script now creates extensions first and skips extension-owned objects). |
+| 2026-10-10 | Local `app_inmobiliaria` (17 migrations, 92 users, 5 listings, 961 audit entries) | Backup 0.3 s / 416 KB; restore 1 s; row counts identical; geography, `appointments_no_overlap` and PostGIS present; app read the copy (`migrate:status`, published listings). Found and fixed: PostGIS requires an admin role (script now creates extensions first and skips extension-owned objects). |
 
 Repeat quarterly and after major schema changes, against a production-sized copy.
 

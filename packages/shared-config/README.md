@@ -1,4 +1,4 @@
-# @hitlease/shared-config
+# @app-inmobiliaria/shared-config
 
 Shared conventions across apps:
 

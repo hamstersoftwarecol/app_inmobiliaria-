@@ -85,7 +85,7 @@ Client-side guards (`RequireAuth`) are UX only — the API authorizes every call
 
 | Folder | Content |
 |---|---|
-| `lib/core` | `config` (dart-define), `network` (Dio + interceptor + `ApiException`, JSON readers, `Paginated`; every request sends `X-Hitlease-Client: mobile`), `storage` (secure token storage), `router` (GoRouter + auth redirect), `theme`, `l10n` (EN/ES, same vocabulary as web), `util` (formatting, `Idempotency-Key`). |
+| `lib/core` | `config` (dart-define), `network` (Dio + interceptor + `ApiException`, JSON readers, `Paginated`; every request sends `X-App-Inmobiliaria-Client: mobile`), `storage` (secure token storage), `router` (GoRouter + auth redirect), `theme`, `l10n` (EN/ES, same vocabulary as web), `util` (formatting, `Idempotency-Key`). |
 | `lib/features/<feature>` | `data` (repositories), `domain` (models: Freezed for auth, plain immutable classes elsewhere), `application` (Riverpod notifiers), `presentation` (screens). Features: auth, properties (search/detail), favorites, saved_searches, showings, notifications, messages, crm (leads/tasks), deals (transactions/documents), home, profile. |
 | `lib/shared` | `widgets` (`AsyncView`, `EmptyState`, `ComingSoon`, `ErrorBanner`), `launch.dart` (signed links, tel:, mailto: via `url_launcher`). |
 

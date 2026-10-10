@@ -66,7 +66,7 @@ class AuthController extends Controller
             $request->session()->put(self::MFA_SESSION_KEY, [
                 'user_id' => $user->getKey(),
                 'remember' => $request->boolean('remember'),
-                'expires_at' => now()->addSeconds((int) config('hitlease.security.mfa_challenge_ttl'))->getTimestamp(),
+                'expires_at' => now()->addSeconds((int) config('app_inmobiliaria.security.mfa_challenge_ttl'))->getTimestamp(),
             ]);
 
             return response()->json(['mfa_required' => true]);

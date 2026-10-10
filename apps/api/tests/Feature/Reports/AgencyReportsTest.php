@@ -109,7 +109,7 @@ class AgencyReportsTest extends TestCase
 
         $response = $this->get('/api/v1/admin/exports/leads?from=2027-06-10&to=2027-06-16')->assertOk();
         $this->assertStringContainsString('text/csv', $response->headers->get('Content-Type'));
-        $this->assertStringContainsString('hitlease-leads-2027-06-10-to-2027-06-16.csv', $response->headers->get('Content-Disposition'));
+        $this->assertStringContainsString('app-inmobiliaria-leads-2027-06-10-to-2027-06-16.csv', $response->headers->get('Content-Disposition'));
         $csv = $response->streamedContent();
         $this->assertStringStartsWith("\xEF\xBB\xBFid,created_at,status", $csv);
         $lines = array_values(array_filter(explode("\n", trim(substr($csv, 3)))));

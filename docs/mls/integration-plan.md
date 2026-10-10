@@ -46,7 +46,7 @@ Implementation: `MLSSyncRunner` (incremental / import / reconcile), `MLSListingS
 `ListingMaterializer` (creates/updates `properties`, never publishes from a sandbox connection),
 `MLSDeduplicationService`, `MLSMediaService`; jobs in `app/Jobs/Mls` are unique per connection and
 release themselves on provider rate limits. The scheduler queues due incremental syncs every 5
-minutes (`hitlease:mls:sync-due`) and a nightly reconcile at 03:30 America/New_York. Reconcile
+minutes (`app-inmobiliaria:mls:sync-due`) and a nightly reconcile at 03:30 America/New_York. Reconcile
 aborts (`mls_reconcile_aborted`) instead of hiding more than `MLS_RECONCILE_MAX_REMOVAL_RATIO`
 (default 20 %) of a provider's listings in one run. Public pages re-check display rules at query
 time (provider enabled, public/mobile flags, removal) and are rendered without caching.

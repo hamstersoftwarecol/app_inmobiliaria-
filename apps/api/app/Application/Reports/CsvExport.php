@@ -39,8 +39,8 @@ final class CsvExport
     public function download(string $dataset, Carbon $from, Carbon $to): StreamedResponse
     {
         [$headers, $query, $row] = $this->definition($dataset, [$from->copy()->utc(), $to->copy()->utc()]);
-        $zone = (string) config('hitlease.agency_timezone');
-        $name = sprintf('hitlease-%s-%s-to-%s.csv', $dataset, $from->copy()->setTimezone($zone)->toDateString(), $to->copy()->setTimezone($zone)->toDateString());
+        $zone = (string) config('app_inmobiliaria.agency_timezone');
+        $name = sprintf('app-inmobiliaria-%s-%s-to-%s.csv', $dataset, $from->copy()->setTimezone($zone)->toDateString(), $to->copy()->setTimezone($zone)->toDateString());
 
         return response()->streamDownload(function () use ($headers, $query, $row) {
             $out = fopen('php://output', 'w');
@@ -73,7 +73,7 @@ final class CsvExport
      */
     private function definition(string $dataset, array $range): array
     {
-        $zone = (string) config('hitlease.agency_timezone');
+        $zone = (string) config('app_inmobiliaria.agency_timezone');
         $local = fn (?string $ts) => $ts === null ? null : Carbon::parse($ts)->setTimezone($zone)->format('Y-m-d H:i');
         $agentName = fn (string $alias, string $column) => DB::raw("(select u.first_name || ' ' || u.last_name from agents a join users u on u.id = a.user_id where a.id = {$column}) as {$alias}");
 

@@ -72,7 +72,7 @@ class PropertyMediaTest extends TestCase
             'photo' => UploadedFile::fake()->createWithContent('tiny.jpg', $this->jpegWithExif(200, 150)),
         ], ['Accept' => 'application/json'])->assertStatus(422)->assertJsonStructure(['error' => ['details' => ['fields' => ['photo']]]]);
 
-        config(['hitlease.media.max_photos' => 1]);
+        config(['app_inmobiliaria.media.max_photos' => 1]);
         $upload = fn () => $this->post("/api/v1/manage/properties/{$property->id}/media", [
             'photo' => UploadedFile::fake()->createWithContent('ok.jpg', $this->jpegWithExif()),
         ], ['Accept' => 'application/json']);

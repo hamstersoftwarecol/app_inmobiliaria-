@@ -14,7 +14,7 @@ class PropertyMediaRequest extends FormRequest
         return [
             'photo' => [
                 'required', 'file', 'mimes:jpg,jpeg,png,webp', 'mimetypes:image/jpeg,image/png,image/webp',
-                'max:'.(int) config('hitlease.media.max_kilobytes', 15360),
+                'max:'.(int) config('app_inmobiliaria.media.max_kilobytes', 15360),
                 'dimensions:min_width=640,min_height=480,max_width=10000,max_height=10000',
             ],
             'caption' => ['nullable', 'string', 'max:300'],

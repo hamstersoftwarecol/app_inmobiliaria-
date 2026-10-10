@@ -14,7 +14,7 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 /**
  * Public listing search (filters, map bounds, radius, polygon) and location
- * autocomplete. Mobile clients identify themselves with `X-Hitlease-Client: mobile` so
+ * autocomplete. Mobile clients identify themselves with `X-App-Inmobiliaria-Client: mobile` so
  * MLS rules that forbid mobile display are honoured.
  */
 class PropertyController extends Controller

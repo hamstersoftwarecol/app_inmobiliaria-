@@ -10,10 +10,10 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "sw
 
 export const metadata: Metadata = {
   metadataBase: new URL(env.siteUrl),
-  title: { default: "Hitlease Real Estate — New Jersey homes for sale and rent", template: "%s | Hitlease Real Estate" },
+  title: { default: "App Inmobiliaria Real Estate — New Jersey homes for sale and rent", template: "%s | App Inmobiliaria Real Estate" },
   description:
-    "Search homes for sale and rent across New Jersey and work with licensed local agents at Hitlease Real Estate.",
-  openGraph: { type: "website", siteName: "Hitlease Real Estate", locale: "en_US" },
+    "Search homes for sale and rent across New Jersey and work with licensed local agents at App Inmobiliaria Real Estate.",
+  openGraph: { type: "website", siteName: "App Inmobiliaria Real Estate", locale: "en_US" },
   robots: { index: true, follow: true },
 };
 

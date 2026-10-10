@@ -24,8 +24,8 @@ const PASSWORD = process.env.E2E_PASSWORD ?? "E2e-Password-123!";
 const MFA_SECRET = process.env.E2E_MFA_SECRET ?? "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 
 const STEP_MS = 30_000;
-const LOCK_DIR = path.join(os.tmpdir(), "hitlease-e2e-broker-mfa.lock");
-const LAST_STEP_FILE = path.join(os.tmpdir(), "hitlease-e2e-broker-mfa.step");
+const LOCK_DIR = path.join(os.tmpdir(), "app-inmobiliaria-e2e-broker-mfa.lock");
+const LAST_STEP_FILE = path.join(os.tmpdir(), "app-inmobiliaria-e2e-broker-mfa.step");
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 

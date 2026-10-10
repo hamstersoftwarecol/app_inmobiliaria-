@@ -4,10 +4,10 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hitlease_mobile/core/l10n/app_localizations.dart';
-import 'package:hitlease_mobile/core/network/api_client.dart';
-import 'package:hitlease_mobile/features/auth/application/auth_controller.dart';
-import 'package:hitlease_mobile/features/auth/domain/user.dart';
+import 'package:app_inmobiliaria_mobile/core/l10n/app_localizations.dart';
+import 'package:app_inmobiliaria_mobile/core/network/api_client.dart';
+import 'package:app_inmobiliaria_mobile/features/auth/application/auth_controller.dart';
+import 'package:app_inmobiliaria_mobile/features/auth/domain/user.dart';
 
 import 'fake_http_adapter.dart';
 

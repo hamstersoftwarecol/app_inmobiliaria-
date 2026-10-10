@@ -16,7 +16,7 @@ class SecureTokenStorage implements TokenStorage {
             iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock_this_device),
           );
 
-  static const _key = 'hitlease_api_token';
+  static const _key = 'app_inmobiliaria_api_token';
   final FlutterSecureStorage _storage;
 
   @override

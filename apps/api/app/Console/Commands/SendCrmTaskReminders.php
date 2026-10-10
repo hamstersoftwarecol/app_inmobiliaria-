@@ -9,7 +9,7 @@ use Illuminate\Console\Command;
 
 class SendCrmTaskReminders extends Command
 {
-    protected $signature = 'hitlease:crm:task-reminders {--lead-minutes=15 : Remind this many minutes before the due time}';
+    protected $signature = 'app-inmobiliaria:crm:task-reminders {--lead-minutes=15 : Remind this many minutes before the due time}';
 
     protected $description = 'Remind assignees about CRM tasks that are due (each task once per due time)';
 

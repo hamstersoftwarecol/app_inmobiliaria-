@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 class ExpireAgentLicenses extends Command
 {
-    protected $signature = 'hitlease:licenses:expire';
+    protected $signature = 'app-inmobiliaria:licenses:expire';
 
     protected $description = 'Mark verified agent licences past their expiration date as expired';
 

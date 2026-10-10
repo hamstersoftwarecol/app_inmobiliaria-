@@ -47,7 +47,7 @@ class UserAdministrationTest extends TestCase
             ->assertForbidden()
             ->assertJsonPath('error.code', 'mfa_enrollment_required');
 
-        config(['hitlease.security.enforce_staff_mfa' => false]);
+        config(['app_inmobiliaria.security.enforce_staff_mfa' => false]);
         $this->getJson('/api/v1/admin/users')->assertOk();
     }
 
