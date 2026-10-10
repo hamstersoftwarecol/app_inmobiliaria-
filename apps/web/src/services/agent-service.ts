@@ -35,7 +35,7 @@ export type AgencyInput = Partial<Omit<Agency, "id" | "slug" | "offices" | "offi
 
 /** Server-side fetch for SSR pages (public directory). Uses an internal URL when provided. */
 async function serverGet<T>(path: string, query: Record<string, string | number | undefined> = {}): Promise<T | null> {
-  const base = (process.env.API_INTERNAL_URL ?? env.apiUrl).replace(/\/$/, "");
+  const base = (process.env.API_INTERNAL_URL || env.apiUrl).replace(/\/$/, "");
   const url = new URL(`${base}/api/v1${path}`);
   Object.entries(query).forEach(([k, v]) => v !== undefined && v !== "" && url.searchParams.set(k, String(v)));
   const res = await fetch(url, { headers: { Accept: "application/json" }, next: { revalidate: 300 } });
