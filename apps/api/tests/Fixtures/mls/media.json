@@ -1,0 +1,7 @@
+{
+  "value": [
+    {"MediaKey": "M-1", "ResourceRecordKey": "TEST-KEY-0001", "ResourceName": "Property", "MediaURL": "https://media.example.test/1.jpg", "Order": 0, "MediaCategory": "Photo", "MimeType": "image/jpeg"},
+    {"MediaKey": "M-2", "ResourceRecordKey": "TEST-KEY-0001", "ResourceName": "Property", "MediaURL": "http://media.example.test/2.jpg", "Order": 1},
+    {"MediaKey": "M-3", "ResourceRecordKey": "TEST-KEY-0001", "ResourceName": "Property", "MediaURL": "https://media.example.test/3.jpg", "Order": 2, "Permission": "Private"}
+  ]
+}

@@ -1,0 +1,37 @@
+<?php
+
+return [
+
+    /*
+    | Public web front-end URL. Used to build password-reset and e-mail
+    | verification links that land on the Next.js application.
+    */
+    'frontend_url' => rtrim((string) env('FRONTEND_URL', 'http://localhost:3000'), '/'),
+
+    /*
+    | Default business time zone of the agency (New Jersey). Data is stored in
+    | UTC and converted at the edges.
+    */
+    'agency_timezone' => env('AGENCY_TIMEZONE', 'America/New_York'),
+
+    'security' => [
+        // Staff roles must enrol in TOTP MFA before using administrative routes.
+        'enforce_staff_mfa' => (bool) env('SECURITY_ENFORCE_STAFF_MFA', true),
+        'staff_roles' => ['super_admin', 'broker', 'office_manager'],
+        'login_max_attempts' => (int) env('SECURITY_LOGIN_MAX_ATTEMPTS', 5),
+        'login_decay_seconds' => (int) env('SECURITY_LOGIN_DECAY_SECONDS', 900),
+        // Seconds a password-verified login may wait for its MFA code.
+        'mfa_challenge_ttl' => 300,
+        'mfa_recovery_codes' => 8,
+        // Roles a visitor may pick when self-registering.
+        'self_registration_roles' => ['buyer', 'seller'],
+    ],
+
+    'mls' => [
+        // Global kill switch. Production syncs stay off until licences and
+        // official provider specifications are in place.
+        'sync_enabled' => (bool) env('MLS_SYNC_ENABLED', false),
+        'http_timeout' => (int) env('MLS_HTTP_TIMEOUT', 30),
+        'default_page_size' => 200,
+    ],
+];
