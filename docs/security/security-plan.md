@@ -165,13 +165,22 @@ defaults when a role is first created; the super admin role always gets everythi
   are immutable; e-mail alerts never include message text and are sent at most hourly per
   conversation. Rate limits: 20 new conversations and 60 messages per minute per user.
 
+### Reports and exports (Sprint 11)
 
+* The dashboard needs `reports.view` (brokers, office managers); `/admin/*` requires MFA for staff.
+* Each CSV export also needs the agency-wide view permission of its data (`leads.view_any`,
+  `appointments.view_any`, `offers.view_any`, `transactions.view_any`, `properties.view_any`), so an
+  export never shows more than the screens. Every export is written to the audit log (dataset and
+  period), responses are `private, no-store`, rate-limited (20/min), and cells starting with
+  `= + - @` (non-numeric) are prefixed to stop spreadsheet formula injection.
+
+## 3. Planned controls (by sprint)
 
 | Sprint | Control |
 |---|---|
 | 4 | R2 storage for media (private bucket for documents), malware scanning for uploads |
 | 9 | ✅ Delivered (see above); ClamAV deployment and R2 private bucket remain blocked on infrastructure |
-| 11 | Admin audit UI, alerting on suspicious security events |
+| 11 | ✅ Audit viewer (Sprint 4) and audited exports; ⏳ alerting on suspicious security events (needs the monitoring stack, Sprint 12) |
 | 12 | DAST (OWASP ZAP baseline) in CI, dependency/license review, backup restore drills, penetration test |
 
 ## 4. Real-estate compliance considerations (require specialist review)
