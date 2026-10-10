@@ -619,3 +619,26 @@ export interface ChatMessage {
 export interface Conversation extends ConversationSummary {
   messages: ChatMessage[];
 }
+
+export interface DashboardPoint {
+  date: string;
+  leads: number;
+  showings: number;
+  offers: number;
+  closings: number;
+}
+
+export interface AgencyDashboard {
+  from: string;
+  to: string;
+  timezone: string;
+  listings: { published: number; active: number; under_contract: number; internal: number; mls: number; new_in_period: number; median_active_price: number | null };
+  agents: { active: number; licences_pending: number; licences_expiring_30d: number };
+  leads: { created: number; won: number; conversion_rate: number | null; unassigned_open: number };
+  showings: { scheduled: number; completed: number; no_show: number; cancelled_or_declined: number };
+  offers: { submitted: number; accepted: number; acceptance_rate: number | null };
+  transactions: { opened: number; closed: number; cancelled: number; closed_volume: number; open: number; open_volume: number };
+  series: { interval: "day" | "week"; points: DashboardPoint[] };
+}
+
+export type ExportDataset = "leads" | "showings" | "offers" | "transactions" | "listings";

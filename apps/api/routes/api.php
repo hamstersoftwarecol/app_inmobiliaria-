@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\V1\Admin\LicenseController;
 use App\Http\Controllers\Api\V1\Admin\MlsProviderController;
 use App\Http\Controllers\Api\V1\Admin\MlsSyncController;
 use App\Http\Controllers\Api\V1\Admin\OfficeController;
+use App\Http\Controllers\Api\V1\Admin\ReportsController;
 use App\Http\Controllers\Api\V1\Admin\RoleController;
 use App\Http\Controllers\Api\V1\Admin\UserController;
 use App\Http\Controllers\Api\V1\Auth\AuthController;
@@ -264,6 +265,10 @@ Route::prefix('v1')->middleware('throttle:api')->group(function () {
         Route::post('/licenses/{license}/revoke', [LicenseController::class, 'revoke'])->name('licenses.revoke');
 
         Route::get('/audit-logs', [AuditLogController::class, 'index'])->can('audit_logs.view')->name('audit-logs.index');
+
+        Route::get('/dashboard', [ReportsController::class, 'dashboard'])->name('dashboard');
+        Route::get('/exports/{dataset}', [ReportsController::class, 'export'])->where('dataset', '[a-z]+')
+            ->middleware('throttle:20,1')->name('exports.show');
 
         Route::prefix('mls')->name('mls.')->group(function () {
             Route::get('/providers', [MlsProviderController::class, 'index'])->can('mls.view')->name('providers.index');

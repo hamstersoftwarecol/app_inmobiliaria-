@@ -3,13 +3,16 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { RequireAuth } from "@/features/auth/components/require-auth";
+import { hasPermission } from "@/hooks/use-auth";
 import { useTranslation } from "@/hooks/use-translation";
 import { cn } from "@/lib/utils";
+import type { User } from "@/types/api";
 
 export function AdminShell({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const pathname = usePathname();
-  const links = [
+  const links = (user: User) => [
+    ...(hasPermission(user, "reports.view") ? [{ href: "/admin/dashboard", label: t("admin.dashboard") }] : []),
     { href: "/admin/users", label: t("admin.users") },
     { href: "/admin/roles", label: t("admin.roles") },
     { href: "/admin/agency", label: t("admin.agency") },
@@ -21,11 +24,11 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
 
   return (
     <RequireAuth>
-      {() => (
+      {(user) => (
         <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
           <h1 className="text-3xl font-bold text-brand-800">{t("admin.title")}</h1>
           <nav aria-label={t("admin.title")} className="mt-4 flex gap-2 overflow-x-auto border-b border-border">
-            {links.map((link) => (
+            {links(user).map((link) => (
               <Link
                 key={link.href}
                 href={link.href}

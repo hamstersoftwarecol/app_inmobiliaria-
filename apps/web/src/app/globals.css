@@ -23,6 +23,8 @@
   --color-border: #e2e8f0;
   --color-ring: #2a6797;
   --color-danger: #b91c1c;
+  /* Data viz: single-series accent (validated: lightness, chroma, ≥3:1 on white). */
+  --color-chart: #2a78d6;
   --color-danger-50: #fef2f2;
   --color-success: #15803d;
   --color-success-50: #f0fdf4;

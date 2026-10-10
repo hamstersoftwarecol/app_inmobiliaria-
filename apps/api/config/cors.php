@@ -25,7 +25,7 @@ return [
 
     'allowed_headers' => ['Accept', 'Accept-Language', 'Authorization', 'Content-Type', 'X-Requested-With', 'X-XSRF-TOKEN', 'Idempotency-Key', 'X-Request-Id'],
 
-    'exposed_headers' => ['X-Request-Id', 'Retry-After'],
+    'exposed_headers' => ['X-Request-Id', 'Retry-After', 'Content-Disposition'],
 
     'max_age' => 0,
 

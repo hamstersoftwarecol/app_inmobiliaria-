@@ -55,6 +55,7 @@ flowchart LR
 | Documents | **Implemented** (Sprint 9); ClamAV and R2 blocked on infrastructure | Private storage, versions, signed URLs (5 min), access logs, AV scan adapter, retention purge | `DocumentService`, `ClamdScanner`, `ScanDocumentVersion`, `PurgeExpiredDocuments` |
 | Messaging | **Implemented** (Sprint 9); Reverb real-time planned | Participant-only conversations, read receipts, throttled e-mail alerts | `MessagingService`, `ConversationController`, `NewMessageNotification` |
 | Notifications | **Implemented** for mail + in-app (Sprint 8); push/SMS blocked | Notification center, per-category preferences, consent, one-click unsubscribe | `NotificationPreferences`, `HonorsPreferences`, `NotificationController` |
+| Reports | **Implemented** (Sprint 11) | Agency KPI dashboard, activity series in agency days, audited CSV exports | `AgencyDashboard`, `CsvExport`, `ReportsController`, web `ColumnChart` |
 | AI assistant | Planned (post-MVP) | NL → structured filters, agent writing aids, guarded by MLS/PII rules | — |
 
 ## 3. Request lifecycle (API)

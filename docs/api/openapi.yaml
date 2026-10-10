@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Hitlease Real Estate API
-  version: 1.0.0-alpha.7
+  version: 1.0.0-alpha.8
   summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
   description: |
     Central API consumed by the Next.js web app and the Flutter mobile app.
@@ -65,6 +65,8 @@ tags:
     description: Showing availability, requests and bookings (no double-booking, DST-safe), reminders.
   - name: Notifications
     description: In-app notification center, e-mail preferences and one-click unsubscribe.
+  - name: Admin Reports
+    description: Agency KPI dashboard and audited CSV exports.
   - name: Deals
     description: Offers and counter-offers, transactions, milestones and parties (staff need MFA).
   - name: Documents
@@ -768,6 +770,45 @@ paths:
         "409": { $ref: "#/components/responses/Conflict" }
         "422": { $ref: "#/components/responses/ValidationError" }
 
+  /admin/dashboard:
+    get:
+      tags: [Admin Reports]
+      operationId: adminDashboard
+      summary: "Agency KPIs and daily/weekly activity for a period of agency days (`reports.view`; staff need MFA)"
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date }, description: Defaults to 29 days before `to` }
+        - { name: to, in: query, schema: { type: string, format: date }, description: Defaults to today (agency time zone) }
+      responses:
+        "200":
+          description: Dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgencyDashboard" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /admin/exports/{dataset}:
+    parameters:
+      - { name: dataset, in: path, required: true, schema: { type: string, enum: [leads, showings, offers, transactions, listings] } }
+      - { name: from, in: query, schema: { type: string, format: date } }
+      - { name: to, in: query, schema: { type: string, format: date } }
+    get:
+      tags: [Admin Reports]
+      operationId: adminExport
+      summary: "CSV export (UTF-8 with BOM; formula-like cells neutralised). Needs `reports.view` plus the agency-wide view permission of the dataset; every export is audited"
+      responses:
+        "200":
+          description: CSV file (`Content-Disposition` attachment)
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /admin/audit-logs:
     get:
       tags: [Admin Audit]
@@ -4911,3 +4952,70 @@ components:
             full_name: { type: string }
         mine: { type: boolean }
         created_at: { type: string, format: date-time }
+
+    AgencyDashboard:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        timezone: { type: string, examples: [America/New_York] }
+        listings:
+          type: object
+          properties:
+            published: { type: integer }
+            active: { type: integer }
+            under_contract: { type: integer }
+            internal: { type: integer }
+            mls: { type: integer }
+            new_in_period: { type: integer }
+            median_active_price: { type: [number, "null"] }
+        agents:
+          type: object
+          properties:
+            active: { type: integer }
+            licences_pending: { type: integer }
+            licences_expiring_30d: { type: integer }
+        leads:
+          type: object
+          properties:
+            created: { type: integer }
+            won: { type: integer }
+            conversion_rate: { type: [number, "null"] }
+            unassigned_open: { type: integer }
+        showings:
+          type: object
+          properties:
+            scheduled: { type: integer }
+            completed: { type: integer }
+            no_show: { type: integer }
+            cancelled_or_declined: { type: integer }
+        offers:
+          type: object
+          description: Negotiations (original offers) submitted in the period and how many ended accepted
+          properties:
+            submitted: { type: integer }
+            accepted: { type: integer }
+            acceptance_rate: { type: [number, "null"] }
+        transactions:
+          type: object
+          properties:
+            opened: { type: integer }
+            closed: { type: integer }
+            cancelled: { type: integer }
+            closed_volume: { type: number }
+            open: { type: integer }
+            open_volume: { type: number }
+        series:
+          type: object
+          properties:
+            interval: { type: string, enum: [day, week], description: "Weekly (ISO weeks) for periods longer than 62 days" }
+            points:
+              type: array
+              items:
+                type: object
+                properties:
+                  date: { type: string, format: date }
+                  leads: { type: integer }
+                  showings: { type: integer }
+                  offers: { type: integer }
+                  closings: { type: integer }

@@ -10,7 +10,7 @@ central REST API.
 | Web | Next.js 15 · TypeScript · Tailwind 4 · shadcn/ui · TanStack Query · Zustand · RHF + Zod | [`apps/web`](apps/web) |
 | Mobile | Flutter 3.47 · Riverpod · GoRouter · Dio · Freezed · secure storage | [`apps/mobile`](apps/mobile) |
 
-## Status (through Sprint 10)
+## Status (through Sprint 11)
 
 **Done and tested (web + API):** authentication (cookie for web, tokens for mobile), TOTP MFA,
 password reset, e-mail verification, sessions, brute-force protection; RBAC (6 roles, 50
@@ -22,12 +22,12 @@ showings (availability, DST-safe slots, no double-booking) and notification cent
 preferences; offers and counter-offers, transactions with NJ milestones, private versioned
 documents with signed downloads, and private messaging. The Flutter app covers search, listing
 detail, favorites, saved searches, showings, notifications, messages and an agent mode (leads, tasks,
-transactions).
+transactions). Brokers get an agency KPI dashboard with activity charts and audited CSV exports.
 
 **Blocked by external authorization or infrastructure:** real MLS connections (licences, specs,
 credentials), maps (Mapbox token), push (Firebase), Cloudflare R2 storage, ClamAV deployment for
 document scanning, production mail and hosting. Nothing is simulated in their place.
-**In progress:** admin KPIs (Sprint 11), hardening (Sprint 12) — see
+**In progress:** hardening and release candidate (Sprint 12) — see
 [`docs/product-backlog.md`](docs/product-backlog.md).
 
 ## Quick start

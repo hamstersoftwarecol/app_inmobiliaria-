@@ -134,10 +134,18 @@ by the parties' attorneys (stated in the UI).
 
 Uploads, offers and admin remain web-only for now (the app links to them).
 
-## Sprint 11 — Admin dashboard & reports
+## Sprint 11 — Admin dashboard & reports (delivered)
 
-KPIs (listings, agents, leads, showings, offers, transactions, conversion), Recharts charts,
-exports, audit viewer, MLS monitoring.
+| ID | Item | Pri | Status | Evidence |
+|---|---|---|---|---|
+| RPT-1 | KPI dashboard: inventory, agents/licences, leads, showings, offers, transactions and volume for a period of agency days | P0 | ✅ | `AgencyReportsTest`, `/admin/dashboard`, E2E `reports.spec.ts` |
+| RPT-2 | Activity charts (daily, weekly past 62 days) as small multiples with keyboard-readable tooltips and a table view | P1 | ✅ | `reports.test.tsx`, E2E |
+| RPT-3 | CSV exports (leads, showings, offers, transactions, listings): permission per dataset, audited, CSV-injection safe, agency-local times | P0 | ✅ | `AgencyReportsTest` |
+| RPT-4 | Audit viewer and MLS monitoring | P0 | ✅ | Delivered in Sprints 2–3 (`/admin/audit`, `/admin/mls`) |
+| RPT-5 | Scheduled report e-mails and per-office breakdowns | P2 | ⏳ | |
+
+Charts use a validated single accent (`--color-chart`, checked for lightness, chroma and ≥3:1 contrast)
+and are drawn as plain SVG; there is no charting dependency.
 
 ## Sprint 12 — Hardening & release candidate
 
