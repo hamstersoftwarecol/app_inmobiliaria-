@@ -54,6 +54,8 @@ docker compose run --rm api php artisan db:seed --class=RolesAndPermissionsSeede
 
 Services: `postgres` (postgis/postgis:16-3.4), `redis`, `api` (PHP-FPM), `queue`, `scheduler`,
 `web` (Next.js standalone), `nginx` (reverse proxy: `api.localhost` → API, everything else → web).
+The web container renders SSR pages against `API_INTERNAL_URL=http://api-internal` (an nginx alias on
+the Compose network); browsers keep using the public `NEXT_PUBLIC_API_URL`.
 
 ## 4. Production checklist
 

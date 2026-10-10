@@ -8,6 +8,7 @@ use App\Models\Agent;
 use App\Models\AgentLicense;
 use App\Models\Office;
 use App\Models\User;
+use App\Support\AgencyClock;
 use Tests\TestCase;
 
 class AgentAdministrationTest extends TestCase
@@ -52,7 +53,7 @@ class AgentAdministrationTest extends TestCase
         $this->actingAsRole(RoleName::OfficeManager);
         $verified = AgentLicense::factory()->verified()->create()->agent;
         $pending = AgentLicense::factory()->create()->agent;
-        $expired = AgentLicense::factory()->verified(now()->subDay()->toDateString())->create()->agent;
+        $expired = AgentLicense::factory()->verified(AgencyClock::today()->subDay()->toDateString())->create()->agent;
 
         $ids = fn (string $filter) => collect($this->getJson("/api/v1/admin/agents?license={$filter}")->assertOk()->json('data'))->pluck('id')->sort()->values()->all();
 

@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domain\Agency\Enums\LicenseStatus;
 use App\Domain\Agency\Enums\LicenseType;
 use App\Domain\Agency\Enums\VerificationSource;
+use App\Support\AgencyClock;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -62,6 +63,6 @@ class AgentLicense extends Model
     public function isCurrentlyValid(): bool
     {
         return $this->status === LicenseStatus::Verified
-            && ($this->expires_on === null || $this->expires_on->endOfDay()->isFuture());
+            && ($this->expires_on === null || $this->expires_on->toDateString() >= AgencyClock::todayString());
     }
 }

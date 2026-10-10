@@ -71,6 +71,10 @@ services:
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api.localhost}
         NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-http://localhost}
     image: hitlease/web:local
+    environment:
+      # Server-side (SSR) requests stay on the Compose network: `api.localhost`
+      # would resolve to the web container's own loopback.
+      API_INTERNAL_URL: http://api-internal
     restart: unless-stopped
 
   nginx:
@@ -83,6 +87,10 @@ services:
     depends_on:
       - api
       - web
+    networks:
+      default:
+        aliases:
+          - api-internal
     restart: unless-stopped
 
 volumes:

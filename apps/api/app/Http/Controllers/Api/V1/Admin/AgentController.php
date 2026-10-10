@@ -14,6 +14,7 @@ use App\Http\Resources\AgentResource;
 use App\Models\Agency;
 use App\Models\Agent;
 use App\Models\User;
+use App\Support\AgencyClock;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -38,7 +39,7 @@ class AgentController extends Controller
         ]);
 
         $validVerified = fn ($q) => $q->where('status', LicenseStatus::Verified->value)
-            ->where(fn ($q) => $q->whereNull('expires_on')->orWhere('expires_on', '>=', today()->toDateString()));
+            ->where(fn ($q) => $q->whereNull('expires_on')->orWhere('expires_on', '>=', AgencyClock::todayString()));
 
         $agents = Agent::query()
             ->with(['user', 'agency', 'office', 'verifiedLicense'])

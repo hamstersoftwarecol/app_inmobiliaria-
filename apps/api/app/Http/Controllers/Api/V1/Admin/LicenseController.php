@@ -9,6 +9,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Agency\ReviewLicenseRequest;
 use App\Http\Resources\AgentLicenseResource;
 use App\Models\AgentLicense;
+use App\Support\AgencyClock;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Gate;
@@ -36,7 +37,7 @@ class LicenseController extends Controller
             ->when($filters['status'] ?? null, fn ($q, $v) => $q->where('status', $v))
             ->when($filters['expiring_within_days'] ?? null, fn ($q, $days) => $q
                 ->where('status', LicenseStatus::Verified->value)
-                ->whereBetween('expires_on', [today()->toDateString(), today()->addDays($days)->toDateString()]))
+                ->whereBetween('expires_on', [AgencyClock::todayString(), AgencyClock::today()->addDays($days)->toDateString()]))
             ->orderBy('created_at')
             ->paginate($filters['per_page'] ?? 20)
             ->withQueryString();

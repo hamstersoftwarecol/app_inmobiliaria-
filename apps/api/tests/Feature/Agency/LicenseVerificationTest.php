@@ -9,6 +9,8 @@ use App\Models\AuditLog;
 use App\Models\Role;
 use App\Models\User;
 use App\Notifications\Agency\LicenseStatusChangedNotification;
+use App\Support\AgencyClock;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -130,7 +132,7 @@ class LicenseVerificationTest extends TestCase
         $this->actingAsRole(RoleName::Broker);
         $license = AgentLicense::factory()->create();
 
-        $this->postJson("/api/v1/admin/licenses/{$license->id}/verify", $this->verifyPayload(['expires_on' => now()->subDay()->toDateString()]))
+        $this->postJson("/api/v1/admin/licenses/{$license->id}/verify", $this->verifyPayload(['expires_on' => AgencyClock::today()->subDay()->toDateString()]))
             ->assertStatus(422);
     }
 
@@ -160,5 +162,22 @@ class LicenseVerificationTest extends TestCase
 
         $this->postJson("/api/v1/admin/agents/{$theirs->id}/licenses", ['license_number' => 'TEST1', 'license_type' => 'salesperson'])
             ->assertForbidden();
+    }
+
+    public function test_licence_expiring_today_in_new_jersey_stays_valid_after_utc_midnight(): void
+    {
+        // 22:30 in New Jersey on March 10 = 02:30 UTC on March 11.
+        $this->travelTo(Carbon::parse('2027-03-11 02:30:00', 'UTC'));
+        $license = AgentLicense::factory()->verified('2027-03-10')->create();
+
+        $this->assertTrue($license->fresh()->isCurrentlyValid());
+        $this->getJson("/api/v1/agents/{$license->agent->slug}")->assertOk();
+        $this->artisan('hitlease:licenses:expire')->expectsOutputToContain('Expired 0 licence(s).');
+
+        // Once New Jersey reaches March 11 the licence is no longer valid.
+        $this->travelTo(Carbon::parse('2027-03-11 05:30:00', 'UTC'));
+        $this->assertFalse($license->fresh()->isCurrentlyValid());
+        $this->getJson("/api/v1/agents/{$license->agent->slug}")->assertNotFound();
+        $this->artisan('hitlease:licenses:expire')->expectsOutputToContain('Expired 1 licence(s).');
     }
 }

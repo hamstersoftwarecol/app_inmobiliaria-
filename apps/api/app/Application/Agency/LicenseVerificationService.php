@@ -11,6 +11,7 @@ use App\Models\Agent;
 use App\Models\AgentLicense;
 use App\Models\User;
 use App\Notifications\Agency\LicenseStatusChangedNotification;
+use App\Support\AgencyClock;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -72,7 +73,7 @@ class LicenseVerificationService
     public function verify(User $actor, AgentLicense $license, VerificationSource $source, string $reference, ?string $expiresOn, ?string $notes): AgentLicense
     {
         $expires = $expiresOn !== null ? Carbon::parse($expiresOn) : $license->expires_on;
-        if ($expires !== null && $expires->endOfDay()->isPast()) {
+        if ($expires !== null && $expires->toDateString() < AgencyClock::todayString()) {
             throw AgencyException::licenseAlreadyExpired();
         }
 
@@ -105,7 +106,7 @@ class LicenseVerificationService
      */
     public function expireDue(?Carbon $today = null): int
     {
-        $today ??= Carbon::now(config('hitlease.agency_timezone'))->startOfDay();
+        $today ??= AgencyClock::today();
         $count = 0;
 
         AgentLicense::query()

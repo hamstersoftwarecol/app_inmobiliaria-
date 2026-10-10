@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domain\Agency\Enums\AgentStatus;
 use App\Domain\Agency\Enums\LicenseStatus;
 use App\Domain\Identity\Enums\UserStatus;
+use App\Support\AgencyClock;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -78,7 +79,7 @@ class Agent extends Model
         return $this->hasOne(AgentLicense::class)->ofMany(
             ['verified_at' => 'max', 'id' => 'max'],
             fn (Builder $q) => $q->where('status', LicenseStatus::Verified->value)
-                ->where(fn ($q) => $q->whereNull('expires_on')->orWhere('expires_on', '>=', today()->toDateString())),
+                ->where(fn ($q) => $q->whereNull('expires_on')->orWhere('expires_on', '>=', AgencyClock::todayString())),
         );
     }
 
@@ -94,7 +95,7 @@ class Agent extends Model
             ->where($this->qualifyColumn('is_public'), true)
             ->whereHas('user', fn ($q) => $q->where('status', UserStatus::Active->value))
             ->whereHas('licenses', fn ($q) => $q->where('status', LicenseStatus::Verified->value)
-                ->where(fn ($q) => $q->whereNull('expires_on')->orWhere('expires_on', '>=', today()->toDateString())));
+                ->where(fn ($q) => $q->whereNull('expires_on')->orWhere('expires_on', '>=', AgencyClock::todayString())));
     }
 
     public function getRouteKeyName(): string

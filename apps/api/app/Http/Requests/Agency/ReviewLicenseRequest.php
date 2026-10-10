@@ -3,6 +3,7 @@
 namespace App\Http\Requests\Agency;
 
 use App\Domain\Agency\Enums\VerificationSource;
+use App\Support\AgencyClock;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
@@ -17,7 +18,7 @@ class ReviewLicenseRequest extends FormRequest
             'verify' => [
                 'verification_source' => ['required', Rule::enum(VerificationSource::class)],
                 'verification_reference' => ['required', 'string', 'min:3', 'max:255'],
-                'expires_on' => ['required', 'date', 'after_or_equal:today'],
+                'expires_on' => ['required', 'date', 'after_or_equal:'.AgencyClock::todayString()],
                 'notes' => ['nullable', 'string', 'max:2000'],
             ],
             default => [
