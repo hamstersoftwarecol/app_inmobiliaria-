@@ -1,9 +1,7 @@
 import { expect, test } from "@playwright/test";
-import { totp } from "./totp";
+import { signInBroker } from "./totp";
 
 // Requires `php artisan db:seed --class=E2ESeeder` (fictitious data, local/testing only).
-const PASSWORD = process.env.E2E_PASSWORD ?? "E2e-Password-123!";
-const MFA_SECRET = process.env.E2E_MFA_SECRET ?? "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 
 test.describe.configure({ mode: "serial" });
 
@@ -34,13 +32,7 @@ test("public directory lists only verified agents, with a profile page", async (
 test("broker verifies a pending licence and the agent becomes public", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop-chromium", "Mutates seeded data; run once.");
 
-  await page.goto("/login");
-  await page.getByLabel("Email address").fill("e2e.broker@example.com");
-  await page.getByLabel("Password").fill(PASSWORD);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.getByLabel("Authentication code").fill(totp(MFA_SECRET));
-  await page.getByRole("button", { name: "Verify" }).click();
-  await expect(page).toHaveURL(/\/dashboard$/);
+  await signInBroker(page);
 
   await page.goto("/admin/licenses");
   const row = page.getByRole("listitem").filter({ hasText: "Pablo Pending" });

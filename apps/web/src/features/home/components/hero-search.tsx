@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTranslation } from "@/hooks/use-translation";
+import { searchHref } from "@/lib/search";
 
 export function HeroSearch() {
   const { t } = useTranslation();
@@ -18,7 +19,7 @@ export function HeroSearch() {
       className="mt-8 flex w-full max-w-2xl flex-col gap-2 rounded-lg bg-white p-2 shadow-lg sm:flex-row"
       onSubmit={(e) => {
         e.preventDefault();
-        router.push(`/search?q=${encodeURIComponent(query.trim().slice(0, 100))}`);
+        router.push(searchHref(query));
       }}
     >
       <label htmlFor="hero-search" className="sr-only">

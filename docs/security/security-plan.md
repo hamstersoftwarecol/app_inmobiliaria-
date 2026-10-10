@@ -80,11 +80,27 @@ defaults when a role is first created; the super admin role always gets everythi
   directory immediately by date even before the job runs.
 * Every transition is audited and notified to the agent (mail + in-app).
 
+### Listing and MLS display controls (Sprint 3)
+
+* Agents edit only listings where they are the listing agent (`update_own`) and always list under
+  their own profile; publishing and deleting are separate permissions (`properties.publish`,
+  `properties.delete`). Publication requires a complete listing; incomplete edits unpublish it.
+* MLS-sourced listings are read-only in the dashboard; publication is driven by the provider's
+  display rules and status.
+* Public endpoints re-check MLS rules on every request (provider enabled, public / mobile display,
+  removal, allowed fields, address suppression, photo limits) and always return attribution,
+  disclaimer and last-updated time; public pages are not served from the Next.js data cache, so
+  withdrawals take effect immediately.
+* Photo uploads: JPEG/PNG/WebP only, ≤ 15 MB, ≥ 640×480, decoded and re-encoded with GD — EXIF
+  (including GPS location) and any embedded payload are discarded. In Compose, nginx serves only
+  image extensions from the media volume and never executes files there.
+* Sync, field-mapping changes, publication and deletions are written to the audit log.
+
 ## 3. Planned controls (by sprint)
 
 | Sprint | Control |
 |---|---|
-| 4 | Property ownership policies (`update_own` = listing agent), media upload validation (type sniffing, size, image re-encoding), R2 private buckets |
+| 4 | R2 storage for media (private bucket for documents), malware scanning for uploads |
 | 5 | Search rate limits (`search` limiter), cache only within MLS freshness rules |
 | 8 | Appointment exclusion constraint (no double booking), notification consent & unsubscribe |
 | 9 | Document access policies, signed URLs (≤5 min), access logs, antivirus scanning (ClamAV) before availability, retention policies, `Idempotency-Key` on offers/transactions/appointments |

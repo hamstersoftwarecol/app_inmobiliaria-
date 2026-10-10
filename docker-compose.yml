@@ -20,6 +20,9 @@ x-api: &api
       condition: service_healthy
     redis:
       condition: service_healthy
+  volumes:
+    # Listing photos (MEDIA_DISK=public) until the Cloudflare R2 bucket exists.
+    - api-media:/var/www/html/storage/app/public
   restart: unless-stopped
 
 services:
@@ -84,6 +87,7 @@ services:
     volumes:
       - ./infrastructure/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
       - ./apps/api/public:/var/www/html/public:ro
+      - api-media:/var/www/media:ro
     depends_on:
       - api
       - web
@@ -96,3 +100,4 @@ services:
 volumes:
   postgres-data:
   redis-data:
+  api-media:

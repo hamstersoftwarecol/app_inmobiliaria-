@@ -1,14 +1,15 @@
 import { expect, test } from "@playwright/test";
 
-test("home page renders and search is honestly marked as in development", async ({ page }) => {
+test("home search opens the listings browser filtered by city", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { level: 1, name: "Find your place in New Jersey" })).toBeVisible();
 
   await page.getByLabel("City, county or ZIP code").fill("Hoboken");
   await page.getByRole("button", { name: "Search" }).click();
 
-  await expect(page).toHaveURL(/\/search\?q=Hoboken/);
-  await expect(page.getByText("Property search is under development")).toBeVisible();
+  await expect(page).toHaveURL(/\/properties\?city=Hoboken/);
+  await expect(page.getByRole("heading", { level: 1, name: "Homes for sale and rent in New Jersey" })).toBeVisible();
+  await expect(page.getByLabel("City")).toHaveValue("Hoboken");
 });
 
 test("language switcher translates the interface", async ({ page }) => {

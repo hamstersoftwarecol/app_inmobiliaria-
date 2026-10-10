@@ -23,8 +23,8 @@ export function SiteHeader() {
         </Link>
 
         <nav aria-label={t("nav.mainNavigation")} className="flex items-center gap-1 sm:gap-2">
-          <Link href="/search" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden sm:inline-flex")}>
-            {t("nav.search")}
+          <Link href="/properties" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden sm:inline-flex")}>
+            {t("nav.properties")}
           </Link>
           <Link href="/agents" className={cn(buttonVariants({ variant: "ghost", size: "sm" }), "hidden sm:inline-flex")}>
             {t("nav.agents")}

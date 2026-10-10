@@ -13,7 +13,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline'" + (process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""),
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
+      `img-src 'self' data: blob: https: ${apiUrl}`,
       "font-src 'self' data:",
       `connect-src 'self' ${apiUrl}`,
       "frame-ancestors 'none'",

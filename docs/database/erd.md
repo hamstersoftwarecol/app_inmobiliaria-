@@ -77,7 +77,7 @@ erDiagram
 Also present: `password_reset_tokens`, `sessions` (database session driver), `personal_access_tokens`
 (Sanctum), `cache`, `jobs`, `failed_jobs`, `job_batches`.
 
-## 2. MLS integration ✅ (foundation) / 🗓️ (sync)
+## 2. MLS integration ✅
 
 ```mermaid
 erDiagram
@@ -137,21 +137,26 @@ erDiagram
   }
 ```
 
-🗓️ `mls_listings` uses the composite unique key **(mls_provider_id, listing_key)** so identical
-`ListingKey`/`ListingId` values from different MLSs never collide. `mls_licenses` (licence
-documents, scope, expiry) arrives with Phase 4.
+✅ `mls_listings` uses the composite unique key **(mls_provider_id, listing_key)** so identical
+`ListingKey`/`ListingId` values from different MLSs never collide; `removed_at` marks listings the
+provider no longer returns (they are hidden at once, never hard-deleted by a sync).
+✅ `mls_field_mappings` (provider-specific overrides of the RESO mapping), `mls_sync_jobs` (type
+import|incremental|reconcile, status, stats jsonb, cursor before/after, error) and `mls_sync_logs`
+(per-record outcome, `listing_key` ≤ 100 chars). 🗓️ `mls_licenses` (licence documents, scope,
+expiry) is deferred until the first agreement exists.
 
-## 3. Listings, geography and search 🗓️
+## 3. Listings ✅ · geography and search 🗓️
 
-* `properties`: internal or MLS-sourced (`source`, `mls_listing_id` FK nullable), `property_type_id`,
+* ✅ `properties`: internal or MLS-sourced (`source`, `mls_listing_id` FK nullable), `property_type_id`,
   `listing_status`, `list_price numeric(14,2)`, `currency char(3) default 'USD'`, address columns,
   `location geography(Point,4326)` with **GiST index**, bedrooms, bathrooms `numeric(4,1)`,
   `living_area_sqft`, `lot_size_sqft`, `year_built`, parking/garage, `hoa_fee_monthly`,
   `annual_taxes`, `features jsonb`, `listing_agent_id`, `slug` (unique), `published_at`, soft deletes.
   B-tree indexes on `(listing_status, list_price)`, `(city_id)`, `(postal_code)`; partial index on
   public/active listings.
-* `property_types`, `property_features`, `property_amenities`, `property_media` (R2 key, order,
-  `display_allowed`), `property_status_history` (append-only), `open_houses`.
+* ✅ `property_types` (RESO PropertyType mapping), amenities as a validated `jsonb` list on
+  `properties`, `property_media` (disk + path or MLS URL, order, dimensions, `display_allowed`),
+  `property_status_history` (append-only status/price changes with source). 🗓️ `open_houses`.
 * `states`, `counties`, `cities`, `postal_codes`, `locations` (autocomplete; optional boundary
   `geography(MultiPolygon)` for polygon search).
 * `favorites`, `saved_searches` (filters jsonb + optional polygon), `property_views`.

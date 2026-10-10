@@ -9,10 +9,12 @@ use App\Models\Agent;
 use App\Models\AgentLicense;
 use App\Models\Office;
 use App\Models\Property;
+use App\Models\PropertyMedia;
 use App\Models\PropertyType;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Storage;
 use RuntimeException;
 
 /**
@@ -85,6 +87,15 @@ class E2ESeeder extends Seeder
                 'listing_agent_id' => $valeria->id, 'agency_id' => $agency->id,
                 'is_published' => $row['published'], 'published_at' => $row['published'] ? now() : null, 'deleted_at' => null,
             ]);
+            $property = Property::query()->where('slug', $row['slug'])->firstOrFail();
+            // Reset what earlier runs added so every run starts from the same state.
+            $property->media()->get()->each(function (PropertyMedia $media) {
+                if ($media->disk && $media->path) {
+                    Storage::disk($media->disk)->delete($media->path);
+                }
+                $media->delete();
+            });
+            $property->statusHistory()->delete();
         }
     }
 }

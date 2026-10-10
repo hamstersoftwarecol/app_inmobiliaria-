@@ -38,17 +38,20 @@ dependency (not counted as done).
 | ADM-1 | Web admin: create/edit users, audit log viewer | P1 | ⏳ | Carried over to Sprint 3 |
 | SET-1 | `system_settings` (audited) | P2 | ⏳ | |
 
-## Sprint 3–4 — MLS pipeline & properties
+## Sprint 3 — MLS pipeline & properties (delivered)
 
-| ID | Item | Pri | Depends on |
-|---|---|---|---|
-| MLS-3 | `mls_listings`, `mls_field_mappings`, `mls_sync_jobs`, `mls_sync_logs`, `mls_licenses` | P0 | MLS-1 |
-| MLS-4 | Jobs: Import, Sync (incremental cursor), SyncMedia, Reconcile; dedup service; monitoring panel | P0 | MLS-3 |
-| MLS-5 | Production enablement | P0 | ⛔ MLS-2 |
-| PRP-1 | `properties` + types/features/amenities/media/status history (PostGIS point, GiST) | P0 | ARC-3 |
-| PRP-2 | Internal listing CRUD, publish/unpublish, agent assignment, ownership policies | P0 | PRP-1, AGT-1 |
-| PRP-3 | Media upload to R2 (validation, optimization, ordering) | P1 | PRP-1 |
-| PRP-4 | SEO pages, JSON-LD (`RealEstateListing`), sitemap | P1 | PRP-2 |
+| ID | Item | Pri | Status | Evidence |
+|---|---|---|---|---|
+| MLS-3 | `mls_listings` (unique provider + ListingKey), `mls_field_mappings`, `mls_sync_jobs`, `mls_sync_logs` | P0 | ✅ | migrations `2026_03_01_*`, `MlsSyncPipelineTest` |
+| MLS-4 | Jobs: Import, Sync (incremental cursor), SyncMedia, Reconcile (with removal safety threshold); content-hash dedup + cross-MLS duplicate candidates; scheduler; admin sync API and monitoring panel | P0 | ✅ | `MlsSyncPipelineTest`, `/admin/mls` |
+| MLS-5 | Production enablement | P0 | ⛔ | Needs MLS-2 (licences, specs, credentials) |
+| MLS-6 | `mls_licenses` (licence documents, scope, expiry) | P1 | ⏳ | Deferred until the first agreement is signed; the licence reference is recorded on the provider meanwhile |
+| PRP-1 | `properties` (PostGIS point + GiST, partial public index), types, amenities, media, append-only status/price history | P0 | ✅ | `PropertyManagementTest` |
+| PRP-2 | Internal listing CRUD, publish/unpublish with completeness check, agent assignment, ownership policies, MLS listings read-only | P0 | ✅ | `PropertyManagementTest`, `/dashboard/properties`, E2E `properties.spec.ts` |
+| PRP-3 | Photo upload: type/size/dimension validation, re-encoding (EXIF/GPS stripped), ordering | P1 | 🟡 | `PropertyMediaTest`; stored on the `public` disk — Cloudflare R2 storage ⛔ (bucket + credentials + `league/flysystem-aws-s3-v3`) |
+| PRP-4 | Public listing pages (SSR), JSON-LD `RealEstateListing`, sitemap entry, MLS attribution/disclaimer at render time | P1 | ✅ | `PublicPropertyComplianceTest`, Vitest, Playwright |
+| PRP-5 | Mobile listing screens | P1 | ⏳ | Sprint 10 (mobile parity) |
+| ADM-1 | Web admin: create/edit users, audit log viewer | P1 | ⏳ | Carried over to Sprint 4 |
 
 ## Sprint 5–6 — Search, maps, details
 
@@ -107,7 +110,7 @@ review for business decisions.
 | MLS data licences, IDX/VOW rules, API specs, sandbox credentials | MLS-2, MLS-5 | Broker |
 | Mapbox access token | MAP-1, mobile map | Agency |
 | Firebase project (FCM) | Push notifications | Agency |
-| Cloudflare R2 bucket + credentials | Media, documents | DevOps |
+| Cloudflare R2 bucket + credentials | Media (PRP-3), documents, agent photos | DevOps |
 | Mail provider (SPF/DKIM/DMARC) | Production e-mail | DevOps |
 | Hosting target (web SSR + PHP-FPM) | Automated rollout | DevOps |
 | Brokerage licence data & legal copy | Footer/advertising compliance | Broker / counsel |

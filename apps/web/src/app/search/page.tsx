@@ -1,13 +1,8 @@
-import type { Metadata } from "next";
-import { Suspense } from "react";
-import { SearchPlaceholder } from "@/features/home/components/search-placeholder";
+import { redirect } from "next/navigation";
+import { searchHref } from "@/lib/search";
 
-export const metadata: Metadata = { title: "Search homes", robots: { index: false } };
-
-export default function SearchPage() {
-  return (
-    <Suspense>
-      <SearchPlaceholder />
-    </Suspense>
-  );
+/** Legacy `/search?q=` links land on the listings browser with equivalent filters. */
+export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string | string[] }> }) {
+  const { q } = await searchParams;
+  redirect(searchHref(Array.isArray(q) ? q[0] : q));
 }

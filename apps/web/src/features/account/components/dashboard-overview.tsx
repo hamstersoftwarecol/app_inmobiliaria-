@@ -7,11 +7,12 @@ import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RequireAuth } from "@/features/auth/components/require-auth";
+import { canManageListings } from "@/features/properties/components/manage-listings";
 import { useTranslation } from "@/hooks/use-translation";
 import { authService } from "@/services/auth-service";
 import type { User } from "@/types/api";
 
-const MODULES = ["properties", "leads", "appointments", "transactions", "documents", "messages"] as const;
+const MODULES = ["leads", "appointments", "transactions", "documents", "messages"] as const;
 
 function Overview({ user }: { user: User }) {
   const { t } = useTranslation();
@@ -22,6 +23,11 @@ function Overview({ user }: { user: User }) {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-bold text-brand-800">{t("dashboard.welcome", { name: user.first_name })}</h1>
         <div className="flex flex-wrap gap-2">
+          {canManageListings(user) && (
+            <Link href="/dashboard/properties" className={buttonVariants({ variant: "outline" })}>
+              {t("nav.listings")}
+            </Link>
+          )}
           {user.permissions?.includes("agents.manage_own_profile") && (
             <Link href="/dashboard/agent-profile" className={buttonVariants({ variant: "outline" })}>
               {t("nav.agentProfile")}

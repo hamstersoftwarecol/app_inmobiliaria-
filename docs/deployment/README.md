@@ -29,7 +29,9 @@ composer install
 php artisan key:generate
 php artisan migrate --seed        # prints the demo accounts' password (<role>@hitlease.test)
 php artisan serve
-php artisan queue:work redis --queue=default,notifications   # e-mails (MAIL_MAILER=log locally)
+php artisan storage:link          # serves listing photos from storage/app/public
+php artisan queue:work redis --queue=default,notifications,mls-sync,mls-media
+php artisan schedule:work         # licence expiry + MLS sync scheduling
 
 # Web — http://localhost:3000
 cd apps/web && cp .env.example .env.local && npm ci && npm run dev
@@ -40,7 +42,9 @@ cd apps/mobile && flutter pub get && flutter run --dart-define=API_BASE_URL=http
 
 Tests: `php artisan test` (needs `hitlease_test` DB), `npm test`, `flutter test`.
 E2E: `php artisan db:seed --class=E2ESeeder` (fictitious data; refuses non-local envs), API on :8000,
-then `npm run build && npm run test:e2e`. The broker test mutates the seed — re-seed before re-running.
+then `npm run build && npm run test:e2e`. The broker tests mutate the seed — re-seed before re-running
+(the seeder also removes photos uploaded by earlier runs). Repeated runs within an hour can trip the
+per-IP auth limiter; locally raise `SECURITY_AUTH_REQUESTS_PER_MINUTE` or run `php artisan cache:clear`.
 
 ## 3. Docker Compose
 
@@ -55,7 +59,9 @@ docker compose run --rm api php artisan db:seed --class=RolesAndPermissionsSeede
 Services: `postgres` (postgis/postgis:16-3.4), `redis`, `api` (PHP-FPM), `queue`, `scheduler`,
 `web` (Next.js standalone), `nginx` (reverse proxy: `api.localhost` → API, everything else → web).
 The web container renders SSR pages against `API_INTERNAL_URL=http://api-internal` (an nginx alias on
-the Compose network); browsers keep using the public `NEXT_PUBLIC_API_URL`.
+the Compose network); browsers keep using the public `NEXT_PUBLIC_API_URL`. Listing photos live on
+the `api-media` volume (`MEDIA_DISK=public`) and nginx serves them read-only under
+`http://api.localhost/storage/` (images only).
 
 ## 4. Production checklist
 
@@ -72,7 +78,13 @@ the Compose network); browsers keep using the public `NEXT_PUBLIC_API_URL`.
 * Migrations run **once per release** from the pipeline (`php artisan migrate --force`) before
   rolling out new containers; then `db:seed --class=RolesAndPermissionsSeeder --force` (idempotent).
 * Scheduler must run (`php artisan schedule:work` / cron `schedule:run` every minute): it expires
-  agent licences daily at 00:15 America/New_York (`hitlease:licenses:expire`).
+  agent licences daily at 00:15 America/New_York (`hitlease:licenses:expire`), queues due MLS syncs
+  every 5 minutes (`hitlease:mls:sync-due`) and a nightly reconcile at 03:30 America/New_York.
+  These MLS commands do nothing until `MLS_SYNC_ENABLED=true` and a provider is authorized.
+* Queue workers must consume `default,notifications,mls-sync,mls-media,documents`.
+* Media: `MEDIA_DISK=public` needs `php artisan storage:link` and persistent, shared storage for
+  every API/queue replica. **Cloudflare R2 is the intended production disk and is blocked** until
+  the bucket, credentials and the `league/flysystem-aws-s3-v3` driver are provided.
 * Observability: set `SENTRY_LARAVEL_DSN` / OTLP endpoint (integration scheduled for Sprint 12),
   alerts on 5xx rate, queue backlog, failed jobs, MLS sync staleness.
 * Mail: verified sender domain (SPF, DKIM, DMARC).

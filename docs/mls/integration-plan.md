@@ -26,7 +26,7 @@ freshness and per-provider display rules.
 | Admin API | `/api/v1/admin/mls/*` | Provider catalogue, display rules, encrypted connections (values never returned or logged), handshake test. |
 | Tables | `mls_providers`, `mls_connections`, `mls_display_rules` | See `docs/database/erd.md`. |
 
-## 3. Phase 4 design (sync pipeline)
+## 3. Sync pipeline (implemented in Sprint 3; runs only against fixture/sandbox data until §6 is complete)
 
 ```
 Scheduler (per provider min_refresh_minutes)
@@ -40,6 +40,16 @@ Scheduler (per provider min_refresh_minutes)
        └─ persist cursor + mls_sync_logs ONLY after the batch commits
 ImportMLSListings (initial load, resumable), ReconcileMLSListings (nightly key diff ⇒ detect removals)
 ```
+
+Implementation: `MLSSyncRunner` (incremental / import / reconcile), `MLSListingSyncService`
+(per-record transaction, content-hash skip, out-of-order protection by `ModificationTimestamp`),
+`ListingMaterializer` (creates/updates `properties`, never publishes from a sandbox connection),
+`MLSDeduplicationService`, `MLSMediaService`; jobs in `app/Jobs/Mls` are unique per connection and
+release themselves on provider rate limits. The scheduler queues due incremental syncs every 5
+minutes (`hitlease:mls:sync-due`) and a nightly reconcile at 03:30 America/New_York. Reconcile
+aborts (`mls_reconcile_aborted`) instead of hiding more than `MLS_RECONCILE_MAX_REMOVAL_RATIO`
+(default 20 %) of a provider's listings in one run. Public pages re-check display rules at query
+time (provider enabled, public/mobile flags, removal) and are rendered without caching.
 
 Failure rules: a failed batch never deletes or overwrites valid data (transaction + cursor
 advanced only on commit); retries with backoff; poison records are logged and skipped; the

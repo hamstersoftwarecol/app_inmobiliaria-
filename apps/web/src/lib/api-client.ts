@@ -45,7 +45,7 @@ let csrfPromise: Promise<void> | null = null;
  * Sanctum SPA flow: obtain the XSRF-TOKEN cookie once before the first
  * state-changing request. Session cookies are HttpOnly and never touched by JS.
  */
-async function ensureCsrfCookie(): Promise<void> {
+export async function ensureCsrfCookie(): Promise<void> {
   if (readCookie(XSRF_COOKIE)) return;
   csrfPromise ??= fetch(`${env.apiUrl}/sanctum/csrf-cookie`, {
     credentials: "include",
@@ -66,7 +66,7 @@ function buildUrl(path: string, query?: RequestOptions["query"]): string {
   return url.toString();
 }
 
-async function toApiError(response: Response): Promise<ApiError> {
+export async function toApiError(response: Response): Promise<ApiError> {
   let body: Partial<ApiErrorBody> | null = null;
   try {
     body = (await response.json()) as ApiErrorBody;
