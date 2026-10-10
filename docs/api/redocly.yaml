@@ -1,0 +1,6 @@
+extends:
+  - recommended
+rules:
+  # Planned operations intentionally document only a placeholder response.
+  operation-4xx-response: warn
+  no-unused-components: warn

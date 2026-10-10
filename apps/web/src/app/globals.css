@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+/* Hitlease Real Estate design tokens */
+@theme {
+  --color-brand-50: #eef5fa;
+  --color-brand-100: #d6e6f2;
+  --color-brand-200: #a9c9e2;
+  --color-brand-500: #2a6797;
+  --color-brand-600: #1b4f78;
+  --color-brand-700: #123b5d; /* primary */
+  --color-brand-800: #0d2c46;
+  --color-brand-900: #081d2f;
+
+  --color-accent-50: #effaf8;
+  --color-accent-100: #ccefe9;
+  --color-accent-600: #0f766e; /* secondary */
+  --color-accent-700: #0b5c56;
+
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #475569;
+  --color-border: #e2e8f0;
+  --color-ring: #2a6797;
+  --color-danger: #b91c1c;
+  /* Data viz: single-series accent (validated: lightness, chroma, ≥3:1 on white). */
+  --color-chart: #2a78d6;
+  --color-danger-50: #fef2f2;
+  --color-success: #15803d;
+  --color-success-50: #f0fdf4;
+  --color-warning: #a16207;
+  --color-warning-50: #fefce8;
+
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --radius-lg: 0.75rem;
+}
+
+html {
+  color-scheme: light;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+}
+
+/* Visible focus for keyboard users (WCAG 2.4.7) */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

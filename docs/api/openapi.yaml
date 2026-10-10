@@ -1,0 +1,5053 @@
+openapi: 3.1.0
+info:
+  title: Hitlease Real Estate API
+  version: 1.0.0-rc.1
+  summary: REST API for the Hitlease Real Estate brokerage platform (New Jersey).
+  description: |
+    Central API consumed by the Next.js web app and the Flutter mobile app.
+
+    **Authentication**
+    * Web (first-party SPA): call `GET /sanctum/csrf-cookie`, then `POST /auth/login` with
+      `credentials: include` and the `X-XSRF-TOKEN` header. Session cookies are HttpOnly.
+    * Mobile: `POST /auth/token` returns a Sanctum personal access token; send it as
+      `Authorization: Bearer <token>`.
+
+    **Errors** always use the envelope `{"error": {"code", "message", "details", "request_id"}}`.
+    Clients should branch on `error.code`, never on the message text.
+
+    Operations tagged with `x-status: planned` are part of the agreed contract but are
+    **not implemented yet**; they return 404 today.
+  contact:
+    name: Hitlease Engineering
+  license:
+    name: Proprietary
+    identifier: LicenseRef-Proprietary
+servers:
+  - url: https://api.hitlease.example/api/v1
+    description: Illustrative production URL (configure the real domain)
+  - url: http://localhost:8000/api/v1
+    description: Local development
+security:
+  - cookieSession: []
+  - bearerToken: []
+tags:
+  - name: System
+    description: Health and metadata.
+  - name: Auth
+    description: Registration, login (cookie or token), MFA, password and session management.
+  - name: Admin Users
+    description: User administration with role-hierarchy guards.
+  - name: Admin Roles
+    description: Roles and granular permissions (RBAC).
+  - name: Admin Audit
+    description: Append-only audit trail.
+  - name: Admin MLS
+    description: MLS provider catalogue and encrypted connections (licence-gated).
+  - name: Properties
+    description: Public listings (internal and MLS) with per-provider compliance applied.
+  - name: Listing Management
+    description: Staff and agent management of internal listings, publication and photos.
+  - name: Admin MLS Sync
+    description: MLS sync jobs, monitoring and field mappings.
+  - name: Search
+    description: Location autocomplete, favorites and saved searches with e-mail alerts.
+  - name: Agents
+    description: Public agent directory (only verified, opted-in agents).
+  - name: Agent Self-Service
+    description: The signed-in agent's own profile and licence submissions.
+  - name: Admin Agency
+    description: Agencies and offices.
+  - name: Admin Agents
+    description: Agent profiles and the licence verification workflow.
+  - name: CRM
+    description: Leads, pipeline, activities, tasks and reports (`/crm/*` requires MFA for staff). Public inquiries create leads.
+  - name: Appointments
+    description: Showing availability, requests and bookings (no double-booking, DST-safe), reminders.
+  - name: Notifications
+    description: In-app notification center, e-mail preferences and one-click unsubscribe.
+  - name: Admin Reports
+    description: Agency KPI dashboard and audited CSV exports.
+  - name: Deals
+    description: Offers and counter-offers, transactions, milestones and parties (staff need MFA).
+  - name: Documents
+    description: Private, versioned transaction documents with signed short-lived downloads and optional ClamAV scanning.
+  - name: Messaging
+    description: Private conversations between clients, agents and staff.
+
+paths:
+  /health:
+    get:
+      tags: [System]
+      operationId: health
+      summary: Liveness check
+      security: []
+      responses:
+        "200":
+          description: API is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, const: ok }
+                  version: { type: string, examples: [v1] }
+  /health/ready:
+    get:
+      tags: [System]
+      operationId: readiness
+      summary: "Readiness: database (with PostGIS), cache and storage must work; queue backlog and scheduler heartbeat are reported as degraded. Not rate-limited; reveals no details"
+      security: []
+      responses:
+        "200":
+          description: Ready (status ok or degraded)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+        "503":
+          description: Not ready
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Readiness" }
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      operationId: register
+      summary: Self-registration (buyer/tenant or seller/owner)
+      description: |
+        Staff and agent accounts are created by administrators only.
+        With `device_name` a token is returned (mobile); from a stateful web origin a cookie session starts.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/RegisterRequest" }
+      responses:
+        "201":
+          description: Account created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+                  token: { $ref: "#/components/schemas/AccessToken" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      operationId: loginWithCookie
+      summary: Web login (cookie session)
+      description: |
+        Only for first-party web origins (Sanctum stateful domains). If the user has MFA enabled the
+        response is `{"mfa_required": true}` and the login must be completed with `POST /auth/mfa/challenge`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email, maxLength: 255 }
+                password: { type: string, maxLength: 128 }
+                remember: { type: boolean, default: false }
+      responses:
+        "200":
+          description: Logged in, or MFA challenge required
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResult" }
+        "400":
+          description: Not a stateful (browser) request — use `/auth/token`. Error code `stateful_session_required`.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "419": { $ref: "#/components/responses/CsrfMismatch" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/mfa/challenge:
+    post:
+      tags: [Auth]
+      operationId: completeMfaChallenge
+      summary: Complete a web login with a TOTP or recovery code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                code: { type: string, pattern: "^\\d{6}$" }
+                recovery_code: { type: string, maxLength: 20 }
+      responses:
+        "200":
+          description: Logged in
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LoginResult" }
+        "422":
+          description: "`invalid_mfa_code`, `mfa_challenge_expired` or validation errors"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/token:
+    post:
+      tags: [Auth]
+      operationId: issueToken
+      summary: Mobile login (personal access token)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, device_name]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                device_name: { type: string, maxLength: 100 }
+                mfa_code: { type: string, description: Required when the account has MFA enabled }
+                recovery_code: { type: string }
+      responses:
+        "201":
+          description: Token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, token]
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+                  token: { $ref: "#/components/schemas/AccessToken" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422":
+          description: "`invalid_credentials`, `mfa_required`, `invalid_mfa_code` or validation errors"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/me:
+    get:
+      tags: [Auth]
+      operationId: currentUser
+      summary: Current user with roles and effective permissions
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      operationId: logout
+      summary: Revoke the current token or end the cookie session
+      responses:
+        "204": { description: Logged out }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      operationId: forgotPassword
+      summary: Request a password reset link
+      description: Always answers 202 to prevent account enumeration.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        "202": { $ref: "#/components/responses/Message" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      operationId: resetPassword
+      summary: Reset the password with the e-mailed token (revokes all sessions)
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, email, password, password_confirmation]
+              properties:
+                token: { type: string }
+                email: { type: string, format: email }
+                password: { $ref: "#/components/schemas/Password" }
+                password_confirmation: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/Message" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/email/verify/{id}/{hash}:
+    get:
+      tags: [Auth]
+      operationId: verifyEmail
+      summary: Verify an e-mail address from the signed link
+      security: []
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer } }
+        - { name: hash, in: path, required: true, schema: { type: string } }
+        - { name: expires, in: query, required: true, schema: { type: integer } }
+        - { name: signature, in: query, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  verified: { type: boolean }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /auth/email/verification-notification:
+    post:
+      tags: [Auth]
+      operationId: resendVerification
+      summary: Re-send the verification e-mail
+      responses:
+        "200": { $ref: "#/components/responses/Message" }
+        "202": { $ref: "#/components/responses/Message" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /auth/profile:
+    patch:
+      tags: [Auth]
+      operationId: updateProfile
+      summary: Update own profile (changing e-mail requires `current_password`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name: { type: string, maxLength: 100 }
+                last_name: { type: string, maxLength: 100 }
+                email: { type: string, format: email }
+                phone: { type: [string, "null"] }
+                locale: { type: string, enum: [en, es] }
+                timezone: { type: string, description: US IANA time zone, examples: [America/New_York] }
+                current_password: { type: string }
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/password:
+    put:
+      tags: [Auth]
+      operationId: changePassword
+      summary: Change password (other sessions are revoked by default)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [current_password, password, password_confirmation]
+              properties:
+                current_password: { type: string }
+                password: { $ref: "#/components/schemas/Password" }
+                password_confirmation: { type: string }
+                logout_other_sessions: { type: boolean, default: true }
+      responses:
+        "200": { $ref: "#/components/responses/Message" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/deactivate:
+    post:
+      tags: [Auth]
+      operationId: deactivateOwnAccount
+      summary: Deactivate own account (password + MFA code if enabled)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordConfirmation" }
+      responses:
+        "204": { description: Account deactivated and all sessions revoked }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/mfa/setup:
+    post:
+      tags: [Auth]
+      operationId: startMfaSetup
+      summary: Start TOTP enrolment (returns secret + otpauth URI)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordConfirmation" }
+      responses:
+        "200":
+          description: Secret generated (not active until confirmed)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  secret: { type: string }
+                  otpauth_url: { type: string, format: uri }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/mfa/confirm:
+    post:
+      tags: [Auth]
+      operationId: confirmMfa
+      summary: Activate MFA with a first valid code; returns one-time recovery codes
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [code]
+              properties:
+                code: { type: string }
+      responses:
+        "200":
+          description: MFA enabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mfa_enabled: { type: boolean, const: true }
+                  recovery_codes: { type: array, items: { type: string } }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/mfa/recovery-codes:
+    post:
+      tags: [Auth]
+      operationId: regenerateRecoveryCodes
+      summary: Regenerate recovery codes (password + TOTP code)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordConfirmation" }
+      responses:
+        "200":
+          description: New codes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  recovery_codes: { type: array, items: { type: string } }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/mfa/disable:
+    post:
+      tags: [Auth]
+      operationId: disableMfa
+      summary: Disable MFA (password + TOTP code)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordConfirmation" }
+      responses:
+        "200":
+          description: MFA disabled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  mfa_enabled: { type: boolean, const: false }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /auth/sessions:
+    get:
+      tags: [Auth]
+      operationId: listSessions
+      summary: Active browser sessions and mobile tokens of the current user
+      responses:
+        "200":
+          description: Sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AuthSession" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    delete:
+      tags: [Auth]
+      operationId: revokeOtherSessions
+      summary: Revoke every session/token except the current one
+      responses:
+        "204": { description: Revoked }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /auth/sessions/{session}:
+    delete:
+      tags: [Auth]
+      operationId: revokeSession
+      summary: Revoke one session (`web:<hash>` or `token:<id>`)
+      parameters:
+        - { name: session, in: path, required: true, schema: { type: string, examples: ["token:42"] } }
+      responses:
+        "204": { description: Revoked }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /auth/security-events:
+    get:
+      tags: [Auth]
+      operationId: listSecurityEvents
+      summary: Own security activity (logins, MFA, password changes)
+      parameters:
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated audit entries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditLogPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /admin/users:
+    get:
+      tags: [Admin Users]
+      operationId: adminListUsers
+      summary: List users (permission `users.view_any`)
+      description: Staff must have MFA enabled to use any `/admin` route (`mfa_enrollment_required`).
+      parameters:
+        - { name: search, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: role, in: query, schema: { $ref: "#/components/schemas/RoleName" } }
+        - { name: status, in: query, schema: { type: string, enum: [active, deactivated] } }
+        - { name: sort, in: query, schema: { type: string, enum: [created_at, -created_at, last_name, -last_name, email, -email] } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated users
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Admin Users]
+      operationId: adminCreateUser
+      summary: Create a user with roles (only roles below the actor's level)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, last_name, email, password, roles]
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: [string, "null"] }
+                locale: { type: string, enum: [en, es] }
+                timezone: { type: string }
+                password: { $ref: "#/components/schemas/Password" }
+                roles: { type: array, minItems: 1, items: { $ref: "#/components/schemas/RoleName" } }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/users/{user}:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    get:
+      tags: [Admin Users]
+      operationId: adminGetUser
+      summary: Get a user
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Admin Users]
+      operationId: adminUpdateUser
+      summary: Update a user's profile (hierarchy enforced)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name: { type: string }
+                last_name: { type: string }
+                email: { type: string, format: email }
+                phone: { type: [string, "null"] }
+                locale: { type: string, enum: [en, es] }
+                timezone: { type: string }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/users/{user}/roles:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    put:
+      tags: [Admin Users]
+      operationId: adminSyncUserRoles
+      summary: Replace a user's roles (no privilege escalation)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [roles]
+              properties:
+                roles: { type: array, minItems: 1, items: { $ref: "#/components/schemas/RoleName" } }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/users/{user}/deactivate:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    post:
+      tags: [Admin Users]
+      operationId: adminDeactivateUser
+      summary: Deactivate a user and revoke all their sessions/tokens
+      responses:
+        "200":
+          description: Deactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/users/{user}/reactivate:
+    parameters:
+      - $ref: "#/components/parameters/UserId"
+    post:
+      tags: [Admin Users]
+      operationId: adminReactivateUser
+      summary: Reactivate a user
+      responses:
+        "200":
+          description: Reactivated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/User" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/roles:
+    get:
+      tags: [Admin Roles]
+      operationId: adminListRoles
+      summary: Roles with permissions and user counts (`roles.view`)
+      responses:
+        "200":
+          description: Roles
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Role" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/permissions:
+    get:
+      tags: [Admin Roles]
+      operationId: adminListPermissions
+      summary: Permission catalogue (`roles.view`)
+      responses:
+        "200":
+          description: Permissions
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name: { type: string, examples: [users.view_any] }
+                        group: { type: string }
+                        description: { type: [string, "null"] }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/roles/{role}/permissions:
+    put:
+      tags: [Admin Roles]
+      operationId: adminUpdateRolePermissions
+      summary: Replace a role's permissions (`roles.manage`; super_admin role is locked)
+      parameters:
+        - { name: role, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [permissions]
+              properties:
+                permissions: { type: array, items: { type: string } }
+      responses:
+        "200":
+          description: Updated role
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Role" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/dashboard:
+    get:
+      tags: [Admin Reports]
+      operationId: adminDashboard
+      summary: "Agency KPIs and daily/weekly activity for a period of agency days (`reports.view`; staff need MFA)"
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date }, description: Defaults to 29 days before `to` }
+        - { name: to, in: query, schema: { type: string, format: date }, description: Defaults to today (agency time zone) }
+      responses:
+        "200":
+          description: Dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgencyDashboard" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /admin/exports/{dataset}:
+    parameters:
+      - { name: dataset, in: path, required: true, schema: { type: string, enum: [leads, showings, offers, transactions, listings] } }
+      - { name: from, in: query, schema: { type: string, format: date } }
+      - { name: to, in: query, schema: { type: string, format: date } }
+    get:
+      tags: [Admin Reports]
+      operationId: adminExport
+      summary: "CSV export (UTF-8 with BOM; formula-like cells neutralised). Needs `reports.view` plus the agency-wide view permission of the dataset; every export is audited"
+      responses:
+        "200":
+          description: CSV file (`Content-Disposition` attachment)
+          content:
+            text/csv:
+              schema: { type: string }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /admin/audit-logs:
+    get:
+      tags: [Admin Audit]
+      operationId: adminListAuditLogs
+      summary: Audit trail (`audit_logs.view`)
+      parameters:
+        - { name: category, in: query, schema: { type: string, enum: [security, admin, data, mls] } }
+        - { name: event, in: query, description: Prefix match, schema: { type: string } }
+        - { name: user_id, in: query, schema: { type: integer } }
+        - { name: from, in: query, description: "Date (agency calendar day, America/New_York, from 00:00) or date-time", schema: { type: string, examples: ["2026-10-01"] } }
+        - { name: to, in: query, description: "Date (whole agency calendar day included) or date-time; must be ≥ from", schema: { type: string, examples: ["2026-10-10"] } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated audit entries
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditLogPage" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/mls/providers:
+    get:
+      tags: [Admin MLS]
+      operationId: adminListMlsProviders
+      summary: MLS providers with display rules and connections (`mls.view`)
+      responses:
+        "200":
+          description: Providers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/MlsProvider" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Admin MLS]
+      operationId: adminCreateMlsProvider
+      summary: Register a provider (`mls.manage`). Created disabled, status `pending_authorization`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MlsProviderInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/MlsProvider" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/mls/providers/{provider}:
+    parameters:
+      - { name: provider, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Admin MLS]
+      operationId: adminGetMlsProvider
+      summary: Get a provider
+      responses:
+        "200":
+          description: Provider
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/MlsProvider" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Admin MLS]
+      operationId: adminUpdateMlsProvider
+      summary: Update a provider, its display rules or its authorization status
+      description: |
+        Setting `status=authorized` or `is_enabled=true` requires `licence_confirmed=true`
+        (and `licence_reference` for authorization). Enabling a provider that is not authorized fails
+        with `mls_not_authorized`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/MlsProviderInput"
+                - type: object
+                  properties:
+                    status: { $ref: "#/components/schemas/MlsProviderStatus" }
+                    is_enabled: { type: boolean }
+                    licence_confirmed: { type: boolean }
+                    licence_reference: { type: string, maxLength: 255 }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/MlsProvider" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/mls/providers/{provider}/connections:
+    post:
+      tags: [Admin MLS]
+      operationId: adminCreateMlsConnection
+      summary: Store an encrypted connection (credentials are never returned)
+      parameters:
+        - { name: provider, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, environment, base_url, credentials]
+              properties:
+                name: { type: string }
+                environment: { type: string, enum: [sandbox, production] }
+                base_url: { type: string, format: uri, pattern: "^https://" }
+                token_url: { type: string, format: uri, pattern: "^https://" }
+                credentials:
+                  type: object
+                  description: OAuth2 client credentials or a static access token.
+                  properties:
+                    client_id: { type: string }
+                    client_secret: { type: string, writeOnly: true }
+                    scope: { type: string }
+                    access_token: { type: string, writeOnly: true }
+      responses:
+        "201":
+          description: Provider with connections
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/MlsProvider" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/mls/connections/{connection}/test:
+    post:
+      tags: [Admin MLS]
+      operationId: adminTestMlsConnection
+      summary: Authentication handshake only (no data import)
+      parameters:
+        - { name: connection, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Handshake succeeded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectionTestResult" }
+        "422":
+          description: Handshake failed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ConnectionTestResult" }
+
+  /agents:
+    get:
+      tags: [Agents]
+      operationId: listPublicAgents
+      summary: Public agent directory
+      description: Only active, opted-in agents with an active account and a verified, unexpired licence.
+      security: []
+      parameters:
+        - { name: search, in: query, schema: { type: string, maxLength: 100 } }
+        - { name: language, in: query, schema: { $ref: "#/components/schemas/LanguageCode" } }
+        - { name: specialty, in: query, schema: { $ref: "#/components/schemas/Specialty" } }
+        - { name: city, in: query, schema: { type: string } }
+        - $ref: "#/components/parameters/Page"
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+      responses:
+        "200":
+          description: Paginated public agents
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/PublicAgent" } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /agents/{slug}:
+    get:
+      tags: [Agents]
+      operationId: getPublicAgent
+      summary: Public agent profile
+      security: []
+      parameters:
+        - { name: slug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }
+      responses:
+        "200":
+          description: Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PublicAgent" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /me/favorites:
+    get:
+      tags: [Search]
+      operationId: listFavorites
+      summary: Favorite listings that are publicly visible now (`favorites.manage`)
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - $ref: "#/components/parameters/Page"
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 48 } }
+      responses:
+        "200":
+          description: Paginated listing cards, most recently saved first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/PublicPropertySummary" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /me/favorites/slugs:
+    get:
+      tags: [Search]
+      operationId: listFavoriteSlugs
+      summary: Slugs of visible favorites (to mark result cards)
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+      responses:
+        "200":
+          description: Slugs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { type: string } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /me/favorites/{slug}:
+    parameters:
+      - { name: slug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }
+    put:
+      tags: [Search]
+      operationId: addFavorite
+      summary: Save a publicly visible listing (idempotent; max 500, `favorites_limit_reached`)
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+      responses:
+        "204": { description: Saved }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Search]
+      operationId: removeFavorite
+      summary: Remove a favorite (works even if the listing is no longer public)
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /me/saved-searches:
+    get:
+      tags: [Search]
+      operationId: listSavedSearches
+      summary: Own saved searches (`saved_searches.manage`)
+      responses:
+        "200":
+          description: Saved searches
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/SavedSearch" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Search]
+      operationId: createSavedSearch
+      summary: Save a search (max 25, `saved_search_limit_reached`)
+      description: |
+        `filters` accepts exactly the `GET /properties` filters (validated with the same rules; at least one
+        is required). Alerts cover listings published after the search is saved and are sent daily (07:45)
+        or weekly (Mondays 07:50) America/New_York; e-mail only to verified addresses, in-app always.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SavedSearchInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/SavedSearch" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /me/saved-searches/{savedSearch}:
+    parameters:
+      - { name: savedSearch, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [Search]
+      operationId: updateSavedSearch
+      summary: Rename, change filters or alert frequency (owner only; others get 404)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SavedSearchInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/SavedSearch" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Search]
+      operationId: deleteSavedSearch
+      summary: Delete a saved search
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /me/agent-profile:
+    get:
+      tags: [Agent Self-Service]
+      operationId: getOwnAgentProfile
+      summary: Own agent profile with licences
+      responses:
+        "200":
+          description: Agent profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Agent Self-Service]
+      operationId: updateOwnAgentProfile
+      summary: Update own public profile fields
+      description: Only `public_email`, `public_phone`, `bio`, `bio_es`, `languages`, `specialties`, `is_public` are applied; office, agency and status are staff-managed.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgentProfileInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /me/agent-profile/licenses:
+    post:
+      tags: [Agent Self-Service]
+      operationId: submitOwnLicense
+      summary: Submit a licence for verification (starts as pending_verification)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseSubmission" }
+      responses:
+        "201":
+          description: Submitted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/agencies:
+    get:
+      tags: [Admin Agency]
+      operationId: adminListAgencies
+      summary: List agencies (`agents.view_any`)
+      responses:
+        "200":
+          description: Agencies
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Agency" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Admin Agency]
+      operationId: adminCreateAgency
+      summary: Create an agency (`agency.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgencyInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agency" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/agencies/{agency}:
+    parameters:
+      - { name: agency, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Admin Agency]
+      operationId: adminGetAgency
+      summary: Agency with offices
+      responses:
+        "200":
+          description: Agency
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agency" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Admin Agency]
+      operationId: adminUpdateAgency
+      summary: Update agency (`agency.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AgencyInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agency" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/offices:
+    get:
+      tags: [Admin Agency]
+      operationId: adminListOffices
+      summary: List offices
+      parameters:
+        - { name: agency_id, in: query, schema: { type: integer } }
+        - { name: active, in: query, schema: { type: boolean } }
+      responses:
+        "200":
+          description: Offices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Office" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Admin Agency]
+      operationId: adminCreateOffice
+      summary: Create an office (`agency.manage`). A new headquarters demotes the previous one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OfficeInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Office" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/offices/{office}:
+    parameters:
+      - { name: office, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [Admin Agency]
+      operationId: adminUpdateOffice
+      summary: Update an office (`agency.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OfficeInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Office" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Admin Agency]
+      operationId: adminDeleteOffice
+      summary: Soft-delete an office without active agents (`office_has_agents` otherwise)
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /admin/agents:
+    get:
+      tags: [Admin Agents]
+      operationId: adminListAgents
+      summary: List agent profiles (`agents.view_any`)
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: status, in: query, schema: { type: string, enum: [active, inactive] } }
+        - { name: office_id, in: query, schema: { type: integer } }
+        - { name: agency_id, in: query, schema: { type: integer } }
+        - { name: license, in: query, schema: { type: string, enum: [verified, pending, none] } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated agents
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/Agent" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Admin Agents]
+      operationId: adminCreateAgent
+      summary: Create an agent profile for a user with the agent or broker role (`agents.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - type: object
+                  required: [user_id, agency_id]
+                  properties:
+                    user_id: { type: integer }
+                    agency_id: { type: integer }
+                - $ref: "#/components/schemas/AgentProfileInput"
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/agents/{agent}:
+    parameters:
+      - { name: agent, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Admin Agents]
+      operationId: adminGetAgent
+      summary: Agent profile with licence history
+      responses:
+        "200":
+          description: Agent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Admin Agents]
+      operationId: adminUpdateAgent
+      summary: Update an agent profile or status (`agents.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/AgentProfileInput"
+                - type: object
+                  properties:
+                    status: { type: string, enum: [active, inactive] }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Agent" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/agents/{agent}/licenses:
+    post:
+      tags: [Admin Agents]
+      operationId: adminSubmitAgentLicense
+      summary: Submit a licence on behalf of an agent (`agents.manage`)
+      parameters:
+        - { name: agent, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseSubmission" }
+      responses:
+        "201":
+          description: Submitted (pending_verification)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/licenses:
+    get:
+      tags: [Admin Agents]
+      operationId: adminListLicenses
+      summary: Licence verification queue
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/LicenseStatus" } }
+        - { name: expiring_within_days, in: query, schema: { type: integer, minimum: 1, maximum: 365 } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated licences
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/AgentLicense" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/licenses/{license}/verify:
+    post:
+      tags: [Admin Agents]
+      operationId: adminVerifyLicense
+      summary: Verify a pending licence (`agents.verify_licenses`, never your own)
+      parameters:
+        - { name: license, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [verification_source, verification_reference, expires_on]
+              properties:
+                verification_source: { $ref: "#/components/schemas/VerificationSource" }
+                verification_reference: { type: string, minLength: 3, maxLength: 255, description: "How it was checked, e.g. lookup date or document id" }
+                expires_on: { type: string, format: date }
+                notes: { type: string, maxLength: 2000 }
+      responses:
+        "200":
+          description: Verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/licenses/{license}/reject:
+    post:
+      tags: [Admin Agents]
+      operationId: adminRejectLicense
+      summary: Reject a pending licence with a reason
+      parameters:
+        - { name: license, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseReason" }
+      responses:
+        "200":
+          description: Rejected
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/licenses/{license}/revoke:
+    post:
+      tags: [Admin Agents]
+      operationId: adminRevokeLicense
+      summary: Revoke a verified licence with a reason
+      parameters:
+        - { name: license, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LicenseReason" }
+      responses:
+        "200":
+          description: Revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/AgentLicense" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /property-types:
+    get:
+      tags: [Properties]
+      operationId: listPropertyTypes
+      summary: Property type catalogue
+      security: []
+      responses:
+        "200":
+          description: Types
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        code: { $ref: "#/components/schemas/PropertyTypeCode" }
+                        name_en: { type: string }
+                        name_es: { type: string }
+
+  /properties:
+    get:
+      tags: [Properties]
+      operationId: listProperties
+      summary: Search public listings
+      description: |
+        Attribute filters plus one geographic filter (`bbox`, `lat`+`lng`+`radius_miles`, or `polygon`).
+        Geographic filters only match listings whose exact location is public (`address.displayed`), so
+        narrowing an area never reveals a suppressed address. Rate limited by the `search` limiter
+        (60/min per user or visitor). Send `X-Hitlease-Client: mobile` from the mobile app so MLS listings
+        whose licence forbids mobile display are excluded.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - { name: listing_type, in: query, schema: { type: string, enum: [sale, rent] } }
+        - { name: property_type, in: query, schema: { $ref: "#/components/schemas/PropertyTypeCode" } }
+        - { name: city, in: query, description: Case-insensitive exact match, schema: { type: string, maxLength: 100 } }
+        - { name: county, in: query, description: Case-insensitive exact match, schema: { type: string, maxLength: 100 } }
+        - { name: postal_code, in: query, schema: { type: string, pattern: "^\\d{5}$" } }
+        - { name: min_price, in: query, schema: { type: number, minimum: 0 } }
+        - { name: max_price, in: query, description: Must be ≥ min_price, schema: { type: number, minimum: 0 } }
+        - { name: min_beds, in: query, schema: { type: integer, minimum: 0, maximum: 20 } }
+        - { name: min_baths, in: query, schema: { type: number, minimum: 0, maximum: 20 } }
+        - { name: min_sqft, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: max_sqft, in: query, schema: { type: integer, minimum: 0 } }
+        - { name: min_year, in: query, schema: { type: integer, minimum: 1600, maximum: 2100 } }
+        - name: "amenities[]"
+          in: query
+          description: All listed amenities must be present (max 10).
+          style: form
+          explode: true
+          schema: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/Amenity" } }
+        - { name: bbox, in: query, description: "\"west,south,east,north\" in degrees (WGS84). Cannot be combined with polygon or radius.", schema: { type: string, examples: ["-74.06,40.70,-74.00,40.76"] } }
+        - { name: lat, in: query, description: Centre latitude (with lng and radius_miles), schema: { type: number, minimum: -90, maximum: 90 } }
+        - { name: lng, in: query, description: Centre longitude, schema: { type: number, minimum: -180, maximum: 180 } }
+        - { name: radius_miles, in: query, schema: { type: number, exclusiveMinimum: 0, maximum: 50 } }
+        - { name: polygon, in: query, description: "3–50 \"lng lat\" points separated by commas (ring closed automatically)", schema: { type: string, maxLength: 2000, examples: ["-74.20 40.70,-74.14 40.70,-74.17 40.77"] } }
+        - { name: sort, in: query, description: "`distance` requires a radius search; otherwise newest is used", schema: { type: string, enum: [newest, price_asc, price_desc, sqft_desc, distance], default: newest } }
+        - $ref: "#/components/parameters/Page"
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 48 } }
+      responses:
+        "200":
+          description: Paginated listing cards
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/PublicPropertySummary" } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /locations:
+    get:
+      tags: [Search]
+      operationId: autocompleteLocations
+      summary: Cities and ZIP codes that currently have public listings
+      description: Digits are matched as a ZIP prefix, text as a city prefix. `center` is computed only from listings with a public location.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2, maxLength: 60 } }
+      responses:
+        "200":
+          description: Up to 8 suggestions, most listings first
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/LocationSuggestion" } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /properties/{slug}:
+    get:
+      tags: [Properties]
+      operationId: getProperty
+      summary: Public listing detail
+      description: MLS listings include attribution, disclaimer and freshness, and only the fields and photos the provider allows.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - { name: slug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }
+      responses:
+        "200":
+          description: Listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PublicProperty" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /manage/properties:
+    get:
+      tags: [Listing Management]
+      operationId: manageListProperties
+      summary: Listings visible to the user (agents only their own)
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: source, in: query, schema: { type: string, enum: [internal, mls] } }
+        - { name: published, in: query, schema: { type: boolean } }
+        - { name: status, in: query, schema: { type: string } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated listings
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/ManagedProperty" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Listing Management]
+      operationId: manageCreateProperty
+      summary: Create an internal listing (unpublished; agents list under their own profile)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PropertyInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /manage/properties/{property}:
+    parameters:
+      - { name: property, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Listing Management]
+      operationId: manageGetProperty
+      summary: Listing with media, MLS info and status/price history
+      responses:
+        "200":
+          description: Listing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Listing Management]
+      operationId: manageUpdateProperty
+      summary: Update an internal listing (MLS listings are read-only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PropertyInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Listing Management]
+      operationId: manageDeleteProperty
+      summary: Soft-delete an internal listing (`properties.delete`)
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /manage/properties/{property}/publish:
+    post:
+      tags: [Listing Management]
+      operationId: managePublishProperty
+      summary: Publish (`properties.publish`); fails with `listing_not_publishable` when required fields are missing
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Published
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /manage/properties/{property}/unpublish:
+    post:
+      tags: [Listing Management]
+      operationId: manageUnpublishProperty
+      summary: Take a listing off the public site (`properties.publish`)
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Unpublished
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ManagedProperty" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+
+  /manage/properties/{property}/media:
+    post:
+      tags: [Listing Management]
+      operationId: manageUploadPhoto
+      summary: Upload a photo (JPEG/PNG/WebP, ≥640×480, ≤15 MB); re-encoded to strip EXIF/GPS metadata
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo: { type: string, format: binary }
+                caption: { type: string, maxLength: 300 }
+      responses:
+        "201":
+          description: Stored
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/PropertyMedia" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /manage/properties/{property}/media/order:
+    put:
+      tags: [Listing Management]
+      operationId: manageReorderPhotos
+      summary: Reorder photos
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [order]
+              properties:
+                order: { type: array, items: { type: integer } }
+      responses:
+        "200":
+          description: Photos in the new order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/PropertyMedia" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /manage/properties/{property}/media/{media}:
+    delete:
+      tags: [Listing Management]
+      operationId: manageDeletePhoto
+      summary: Delete an uploaded photo
+      parameters:
+        - { name: property, in: path, required: true, schema: { type: integer } }
+        - { name: media, in: path, required: true, schema: { type: integer } }
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/mls/sync:
+    post:
+      tags: [Admin MLS Sync]
+      operationId: adminTriggerMlsSync
+      summary: Queue a sync (`mls.sync`); returns the pending job if one is already queued/running
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [connection_id, type]
+              properties:
+                connection_id: { type: integer }
+                type: { type: string, enum: [import, incremental, reconcile] }
+      responses:
+        "202":
+          description: Queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/MlsSyncJob" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /admin/mls/sync-jobs:
+    get:
+      tags: [Admin MLS Sync]
+      operationId: adminListMlsSyncJobs
+      summary: Sync job history (`mls.view`)
+      parameters:
+        - { name: connection_id, in: query, schema: { type: integer } }
+        - { name: status, in: query, schema: { type: string, enum: [queued, running, succeeded, partial, failed] } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Jobs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/MlsSyncJob" } }
+                  meta: { type: object }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/mls/sync-jobs/{job}:
+    get:
+      tags: [Admin MLS Sync]
+      operationId: adminGetMlsSyncJob
+      summary: Sync job with its latest 200 log lines
+      parameters:
+        - { name: job, in: path, required: true, schema: { type: integer } }
+      responses:
+        "200":
+          description: Job
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    allOf:
+                      - $ref: "#/components/schemas/MlsSyncJob"
+                      - type: object
+                        properties:
+                          logs:
+                            type: array
+                            items:
+                              type: object
+                              properties:
+                                level: { type: string, enum: [info, warning, error] }
+                                message: { type: string }
+                                listing_key: { type: [string, "null"] }
+                                created_at: { type: string, format: date-time }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /admin/mls/status:
+    get:
+      tags: [Admin MLS Sync]
+      operationId: adminMlsStatus
+      summary: Monitoring panel data (per-connection health, staleness, counts, duplicate candidates)
+      responses:
+        "200":
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      sync_enabled: { type: boolean }
+                      connections:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            connection_id: { type: integer }
+                            name: { type: string }
+                            environment: { type: string }
+                            status: { type: string }
+                            last_error: { type: [string, "null"] }
+                            last_synced_at: { type: [string, "null"], format: date-time }
+                            is_stale: { type: boolean }
+                            listings:
+                              type: object
+                              properties:
+                                total: { type: integer }
+                                removed: { type: integer }
+                                published: { type: integer }
+                            last_job: { oneOf: [{ $ref: "#/components/schemas/MlsSyncJob" }, { type: "null" }] }
+                      duplicate_candidates:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            address_key: { type: string }
+                            property_ids: { type: string }
+                            providers: { type: integer }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /admin/mls/providers/{provider}/field-mappings:
+    parameters:
+      - { name: provider, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Admin MLS Sync]
+      operationId: adminGetMlsFieldMappings
+      summary: Provider field-name overrides of the RESO Data Dictionary
+      responses:
+        "200":
+          description: Mappings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/FieldMapping" } }
+    put:
+      tags: [Admin MLS Sync]
+      operationId: adminReplaceMlsFieldMappings
+      summary: Replace all mappings (`mls.manage`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mappings]
+              properties:
+                mappings: { type: array, items: { $ref: "#/components/schemas/FieldMapping" } }
+      responses:
+        "200":
+          description: Updated mappings
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/FieldMapping" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  # ------------------------------------------------------------------ Public inquiries
+  /inquiries:
+    post:
+      tags: [CRM]
+      operationId: createInquiry
+      summary: Public contact form (listing, agent profile or general)
+      description: |
+        Creates a lead, or adds the inquiry to the person's open lead when the normalized e-mail or phone
+        matches. Listing inquiries go to the listing agent, agent-page inquiries to that agent; otherwise
+        staff with `leads.assign` are notified. The response is identical in every case (including the
+        `website` honeypot) and never reveals whether the person was known. Rate limit: 5/min and 20/h per visitor.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [first_name, contact_consent]
+              properties:
+                first_name: { type: string, maxLength: 100 }
+                last_name: { type: [string, "null"], maxLength: 100 }
+                email: { type: [string, "null"], format: email, description: Required without phone }
+                phone: { type: [string, "null"], description: Required without email }
+                message: { type: [string, "null"], maxLength: 2000 }
+                intent: { type: [string, "null"], enum: [buy, rent, sell, other, null] }
+                property_slug: { type: string, description: A publicly visible listing (404 otherwise) }
+                agent_slug: { type: string, description: A publicly listed agent (404 otherwise) }
+                preferred_language: { type: string, enum: [en, es] }
+                contact_consent: { type: boolean, const: true, description: Consent to be contacted about this inquiry (stored with time and IP) }
+                marketing_consent: { type: boolean }
+                website: { type: string, description: "Honeypot: leave empty" }
+      responses:
+        "202": { $ref: "#/components/responses/Message" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /crm/leads:
+    get:
+      tags: [CRM]
+      operationId: listLeads
+      summary: Leads visible to the user (`leads.view_any`, or `leads.view_assigned` for own leads)
+      parameters:
+        - { name: search, in: query, description: "Name, e-mail or phone", schema: { type: string, maxLength: 100 } }
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/LeadStatus" } }
+        - { name: source, in: query, schema: { $ref: "#/components/schemas/LeadSource" } }
+        - { name: assigned, in: query, description: "`me`, `unassigned` or an agent id", schema: { type: string } }
+        - { name: open, in: query, schema: { type: boolean } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated leads, most recently active first
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/Lead" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [CRM]
+      operationId: createLead
+      summary: Enter a lead by hand (`leads.create`); agents without `leads.assign` own what they create
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/leads/board:
+    get:
+      tags: [CRM]
+      operationId: leadBoard
+      summary: Kanban columns (totals and the 25 most recently active leads per stage)
+      parameters:
+        - { name: search, in: query, schema: { type: string } }
+        - { name: source, in: query, schema: { $ref: "#/components/schemas/LeadSource" } }
+        - { name: assigned, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: One column per stage, in pipeline order
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        status: { $ref: "#/components/schemas/LeadStatus" }
+                        total: { type: integer }
+                        leads: { type: array, items: { $ref: "#/components/schemas/Lead" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /crm/leads/{lead}:
+    parameters:
+      - { name: lead, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [CRM]
+      operationId: getLead
+      summary: Lead with timeline, tasks, possible duplicates and the caller's allowed actions
+      responses:
+        "200":
+          description: Lead
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+                  meta:
+                    type: object
+                    properties:
+                      possible_duplicates:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            id: { type: integer }
+                            full_name: { type: string }
+                            status: { $ref: "#/components/schemas/LeadStatus" }
+                            created_at: { type: [string, "null"], format: date-time }
+                      can:
+                        type: object
+                        properties:
+                          update: { type: boolean }
+                          assign: { type: boolean }
+                          merge: { type: boolean }
+                          delete: { type: boolean }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [CRM]
+      operationId: updateLead
+      summary: Update contact details (`leads.update_any`, or `leads.update_assigned` for own leads)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LeadInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [CRM]
+      operationId: deleteLead
+      summary: Soft-delete a lead (`leads.delete`, audited)
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /crm/leads/{lead}/status:
+    parameters:
+      - { name: lead, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [CRM]
+      operationId: setLeadStatus
+      summary: Move the lead to another stage (`lost` requires a reason)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { $ref: "#/components/schemas/LeadStatus" }
+                lost_reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/leads/{lead}/assign:
+    parameters:
+      - { name: lead, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [CRM]
+      operationId: assignLead
+      summary: Assign to an active agent or unassign (`leads.assign`, audited, agent notified)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [agent_id]
+              properties:
+                agent_id: { type: [integer, "null"] }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/leads/{lead}/merge:
+    parameters:
+      - { name: lead, in: path, required: true, description: The duplicate to fold in (soft-deleted), schema: { type: integer } }
+    post:
+      tags: [CRM]
+      operationId: mergeLead
+      summary: Merge a duplicate into another lead (`leads.update_any`, audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [into_lead_id]
+              properties:
+                into_lead_id: { type: integer }
+      responses:
+        "200":
+          description: The surviving lead
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/leads/{lead}/activities:
+    parameters:
+      - { name: lead, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [CRM]
+      operationId: logLeadActivity
+      summary: Log a call, e-mail, meeting or note (append-only)
+      description: The first logged call/e-mail/meeting sets `first_contacted_at` and moves a `new` lead to `contacted`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [type]
+              properties:
+                type: { type: string, enum: [note, call, email, meeting] }
+                body: { type: string, maxLength: 5000, description: Required for notes }
+                occurred_at: { type: string, format: date-time, description: Not in the future; defaults to now }
+      responses:
+        "201":
+          description: Logged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/LeadActivity" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /crm/tasks:
+    get:
+      tags: [CRM]
+      operationId: listCrmTasks
+      summary: Own tasks (or everyone's with `scope=all` and `leads.assign`)
+      parameters:
+        - { name: state, in: query, schema: { type: string, enum: [open, overdue, completed], default: open } }
+        - { name: scope, in: query, schema: { type: string, enum: [mine, all], default: mine } }
+        - { name: lead_id, in: query, schema: { type: integer } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Tasks, soonest due first (completed ones most recent first)
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/CrmTask" } }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [CRM]
+      operationId: createCrmTask
+      summary: Create a task (for others only with `leads.assign`); reminders go out 15 minutes before due
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmTaskInput" }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CrmTask" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /crm/tasks/{task}:
+    parameters:
+      - { name: task, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [CRM]
+      operationId: updateCrmTask
+      summary: Edit, reschedule (re-arms the reminder) or complete a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/CrmTaskInput" }
+      responses:
+        "200":
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CrmTask" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [CRM]
+      operationId: deleteCrmTask
+      summary: Delete a task
+      responses:
+        "204": { description: Deleted }
+        "403": { $ref: "#/components/responses/Forbidden" }
+
+  /crm/reports/summary:
+    get:
+      tags: [CRM]
+      operationId: crmSummary
+      summary: Pipeline figures for leads created in a period (`reports.view` + `leads.view_any`)
+      parameters:
+        - { name: from, in: query, description: "Agency calendar day (default 30 days before `to`)", schema: { type: string, format: date } }
+        - { name: to, in: query, description: "Agency calendar day (default today); max range one year", schema: { type: string, format: date } }
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/CrmSummary" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /properties/{slug}/showing-slots:
+    get:
+      tags: [Appointments]
+      operationId: listShowingSlots
+      summary: Free showing slots for a listing (public; no personal data)
+      description: |
+        Slots come from the listing agent's weekly hours (local time of the agency, converted per date so
+        they stay at the same local times across DST), minus time off and live showings, at least 2 hours
+        ahead and at most 30 days ahead. Only internal listings that are active or coming soon are bookable.
+      security: []
+      parameters:
+        - $ref: "#/components/parameters/ClientChannel"
+        - { name: slug, in: path, required: true, schema: { type: string, pattern: "^[a-z0-9-]+$" } }
+        - { name: from, in: query, description: "Agency calendar day (default today)", schema: { type: string, format: date } }
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 14, default: 7 } }
+      responses:
+        "200":
+          description: Slots per day
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ShowingSlots" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /appointments:
+    get:
+      tags: [Appointments]
+      operationId: listAppointments
+      summary: Showings visible to the user (own requests, hosted showings, or all with `appointments.view_any`)
+      parameters:
+        - { name: when, in: query, schema: { type: string, enum: [upcoming, past], default: upcoming } }
+        - { name: status, in: query, schema: { type: string, enum: [requested, confirmed, declined, cancelled, completed, no_show] } }
+        - { name: role, in: query, schema: { type: string, enum: [requester, host] } }
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
+      responses:
+        "200":
+          description: Paginated showings
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PaginationMeta"
+                  - type: object
+                    properties:
+                      data: { type: array, items: { $ref: "#/components/schemas/Appointment" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      tags: [Appointments]
+      operationId: requestShowing
+      summary: Request a published slot (`appointments.request`); joins or opens the visitor's CRM lead
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+        - $ref: "#/components/parameters/ClientChannel"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [property_slug, starts_at, contact_consent]
+              properties:
+                property_slug: { type: string }
+                starts_at: { type: string, format: date-time, description: Must equal a slot returned by showing-slots }
+                phone: { type: string }
+                notes: { type: string, maxLength: 1000 }
+                contact_consent: { type: boolean, const: true }
+      responses:
+        "201":
+          description: Requested (awaiting the agent's confirmation)
+          headers:
+            Idempotent-Replayed: { description: "`true` when this is the stored response of an earlier request with the same key", schema: { type: string } }
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`slot_unavailable` or `idempotency_in_progress`", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /appointments/book:
+    post:
+      tags: [Appointments]
+      operationId: bookShowing
+      summary: Book a confirmed showing (own calendar with `appointments.manage_own`, any agent with `appointments.manage_any`)
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [starts_at]
+              properties:
+                agent_id: { type: integer, description: Managers only }
+                property_id: { type: integer }
+                lead_id: { type: integer, description: Must be visible to the caller; fills the contact details }
+                contact_name: { type: string, description: Required without lead_id }
+                contact_email: { type: string, format: email }
+                contact_phone: { type: string }
+                starts_at: { type: string, format: date-time }
+                duration_minutes: { type: integer, minimum: 15, maximum: 240 }
+                notes: { type: string }
+      responses:
+        "201":
+          description: Confirmed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Appointments]
+      operationId: getAppointment
+      summary: A showing (requester, host or `appointments.view_any`)
+      responses:
+        "200":
+          description: Showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /appointments/{appointment}/confirm:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: confirmShowing
+      summary: "Confirm a requested showing (host or manager); the visitor gets an .ics invite"
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}/decline:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: declineShowing
+      summary: "Decline a requested showing (host or manager)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}/cancel:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: cancelShowing
+      summary: "Cancel a requested or confirmed showing (requester, host or manager)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 500 }
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}/reschedule:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: rescheduleShowing
+      summary: "Move a showing: requesters pick a published slot (back to requested); hosts any free time (stays confirmed)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [starts_at]
+              properties:
+                starts_at: { type: string, format: date-time }
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /appointments/{appointment}/complete:
+    parameters:
+      - { name: appointment, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Appointments]
+      operationId: completeShowing
+      summary: "Record the outcome after the start time (host or manager)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [outcome]
+              properties:
+                outcome: { type: string, enum: [completed, no_show] }
+                feedback_rating: { type: integer, minimum: 1, maximum: 5 }
+                feedback_comment: { type: string, maxLength: 2000 }
+      responses:
+        "200":
+          description: Updated showing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Appointment" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+
+  /me/availability:
+    get:
+      tags: [Appointments]
+      operationId: getOwnAvailability
+      summary: The agent's weekly showing hours and upcoming time off
+      responses:
+        "200":
+          description: Availability
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Availability" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    put:
+      tags: [Appointments]
+      operationId: replaceOwnAvailability
+      summary: Replace the weekly hours (local agency time; windows on a day must not overlap)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [windows]
+              properties:
+                windows: { type: array, maxItems: 35, items: { $ref: "#/components/schemas/AvailabilityWindow" } }
+      responses:
+        "200":
+          description: Availability
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Availability" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /me/time-off:
+    post:
+      tags: [Appointments]
+      operationId: addTimeOff
+      summary: Block a period (no slots are offered during it)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [starts_at, ends_at]
+              properties:
+                starts_at: { type: string, format: date-time }
+                ends_at: { type: string, format: date-time }
+                reason: { type: string, maxLength: 200 }
+      responses:
+        "201":
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/TimeOff" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /me/time-off/{timeOff}:
+    delete:
+      tags: [Appointments]
+      operationId: deleteTimeOff
+      summary: Remove time off
+      parameters:
+        - { name: timeOff, in: path, required: true, schema: { type: integer } }
+      responses:
+        "204": { description: Deleted }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /me/notifications:
+    get:
+      tags: [Notifications]
+      operationId: listNotifications
+      summary: In-app notifications, newest first
+      parameters:
+        - { name: unread, in: query, schema: { type: boolean } }
+        - $ref: "#/components/parameters/Page"
+        - { name: per_page, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+      responses:
+        "200":
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/AppNotification" } }
+                  meta:
+                    type: object
+                    properties:
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                      total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /me/notifications/unread-count:
+    get:
+      tags: [Notifications]
+      operationId: unreadNotificationCount
+      summary: Unread count (for the header badge)
+      responses:
+        "200": { $ref: "#/components/responses/UnreadCount" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /me/notifications/{notification}/read:
+    post:
+      tags: [Notifications]
+      operationId: markNotificationRead
+      summary: Mark one notification as read
+      parameters:
+        - { name: notification, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "200": { $ref: "#/components/responses/UnreadCount" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /me/notifications/read-all:
+    post:
+      tags: [Notifications]
+      operationId: markAllNotificationsRead
+      summary: Mark everything as read
+      responses:
+        "200": { $ref: "#/components/responses/UnreadCount" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /me/notification-preferences:
+    get:
+      tags: [Notifications]
+      operationId: getNotificationPreferences
+      summary: E-mail preference per category (in-app notifications are always stored)
+      responses:
+        "200":
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/NotificationPreferences" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    put:
+      tags: [Notifications]
+      operationId: updateNotificationPreferences
+      summary: Turn optional e-mails on or off (marketing changes are audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mail]
+              properties:
+                mail:
+                  type: object
+                  additionalProperties: { type: boolean }
+                  description: "Keys: showing_updates, showing_reminders, lead_updates, task_reminders, saved_search_alerts, licence_updates, offer_updates, transaction_updates, messages, marketing"
+      responses:
+        "200":
+          description: Preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/NotificationPreferences" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /notifications/unsubscribe:
+    post:
+      tags: [Notifications]
+      operationId: unsubscribe
+      summary: One-click unsubscribe from an e-mail link (RFC 8058; token in body or query)
+      security: []
+      parameters:
+        - { name: token, in: query, schema: { type: string } }
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token: { type: string }
+      responses:
+        "200":
+          description: Unsubscribed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  event: { type: string }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  # ------------------------------------------------------------------ Offers & transactions (Sprint 9)
+  /offers:
+    get:
+      tags: [Deals]
+      operationId: listOffers
+      summary: Latest offer of each negotiation the user may see (agents on either side; `offers.view_any`)
+      parameters:
+        - { name: status, in: query, schema: { $ref: "#/components/schemas/OfferStatus" } }
+        - { name: property_id, in: query, schema: { type: integer } }
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/Page"
+      responses:
+        "200":
+          description: Offers
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OfferPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Deals]
+      operationId: createOffer
+      summary: "Record a buyer's offer (agents act as the buyer's agent; managers may name one). `submit: true` sends it at once"
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OfferCreateRequest" }
+      responses:
+        "201":
+          description: Created offer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /offers/{offer}:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Deals]
+      operationId: getOfferChain
+      summary: The whole negotiation (original offer and counters), oldest first
+      responses:
+        "200":
+          description: Negotiation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Offer" } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Deals]
+      operationId: updateOfferDraft
+      summary: Edit a draft (author side only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OfferTerms" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/submit:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: submitOffer
+      summary: "Submit a draft to the other side"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/withdraw:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: withdrawOffer
+      summary: "Withdraw a draft or submitted offer (author side)"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string, maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/reject:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: rejectOffer
+      summary: "Reject a submitted offer (responding side)"
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                note: { type: string, maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/counter:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: counterOffer
+      summary: "Counter a submitted offer (responding side): the offer becomes `countered` and a new offer from the other side is submitted"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/OfferTerms"
+                - type: object
+                  properties:
+                    note: { type: string, maxLength: 1000 }
+      responses:
+        "201":
+          description: Counter-offer
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Offer" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /offers/{offer}/accept:
+    parameters:
+      - { name: offer, in: path, required: true, schema: { type: integer } }
+      - $ref: "#/components/parameters/IdempotencyKey"
+    post:
+      tags: [Deals]
+      operationId: acceptOffer
+      summary: "Accept (responding side): opens the transaction with default NJ milestones and puts an internal listing under contract (`property_under_contract` if one is already open)"
+      responses:
+        "201":
+          description: Opened transaction
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+  /transactions:
+    get:
+      tags: [Deals]
+      operationId: listTransactions
+      summary: Transactions the user works on or takes part in (`transactions.view_any` sees all)
+      parameters:
+        - { name: status, in: query, schema: { type: string, enum: [open, closed, cancelled] } }
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/Page"
+      responses:
+        "200":
+          description: Transactions
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TransactionPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+  /transactions/{transaction}:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Deals]
+      operationId: getTransaction
+      summary: "A transaction (agents on it, linked clients, `transactions.view_any`); party contact details only for managers"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      tags: [Deals]
+      operationId: updateTransaction
+      summary: Change the closing date (open transactions; agents on it or `transactions.manage_any`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                closing_date: { type: [string, "null"], format: date }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/close:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Deals]
+      operationId: closeTransaction
+      summary: Mark as closed (listing → closed; documents get their retention date)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                closing_date: { type: string, format: date, description: "Today or earlier (defaults to today, agency time)" }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/cancel:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Deals]
+      operationId: cancelTransaction
+      summary: Cancel (listing back to active; the accepted offer becomes `terminated`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              properties:
+                reason: { type: string, minLength: 3, maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/milestones:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Deals]
+      operationId: addMilestone
+      summary: Add a custom milestone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, maxLength: 200 }
+                due_date: { type: [string, "null"], format: date }
+                notes: { type: [string, "null"], maxLength: 1000 }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/milestones/{milestone}:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+      - { name: milestone, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [Deals]
+      operationId: updateMilestone
+      summary: Edit, reschedule (re-arms its reminder) or complete a milestone
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, maxLength: 200 }
+                due_date: { type: [string, "null"], format: date }
+                notes: { type: [string, "null"], maxLength: 1000 }
+                completed: { type: boolean }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Deals]
+      operationId: deleteMilestone
+      summary: Delete a custom milestone (default milestones can only be edited)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /transactions/{transaction}/participants:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Deals]
+      operationId: addParticipant
+      summary: "Add a party; an e-mail matching an active account links it (shared documents, deal conversation)"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role, name]
+              properties:
+                role: { type: string, enum: [buyer, seller, attorney, lender, title, other] }
+                name: { type: string, maxLength: 200 }
+                email: { type: [string, "null"], format: email }
+                phone: { type: [string, "null"] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Transaction" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+  /transactions/{transaction}/participants/{participant}:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+      - { name: participant, in: path, required: true, schema: { type: integer } }
+    delete:
+      tags: [Deals]
+      operationId: removeParticipant
+      summary: Remove a party
+      responses:
+        "204": { description: Removed }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /transactions/{transaction}/documents:
+    parameters:
+      - { name: transaction, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Documents]
+      operationId: listDocuments
+      summary: "Documents of a transaction (clients see only `shared` ones)"
+      responses:
+        "200":
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Document" } }
+                  meta:
+                    type: object
+                    properties:
+                      can_upload: { type: boolean }
+                      scan_required: { type: boolean, description: "When true, files are downloadable only after a clean malware scan" }
+                      max_kb: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      tags: [Documents]
+      operationId: uploadDocument
+      summary: "Upload a document (PDF, JPG, PNG, DOCX, XLSX; size limit in `meta.max_kb`). Stored on a private disk"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, title, category, visibility]
+              properties:
+                file: { type: string, format: binary }
+                title: { type: string, maxLength: 200 }
+                category: { $ref: "#/components/schemas/DocumentCategory" }
+                visibility: { type: string, enum: [internal, shared] }
+      responses:
+        "201":
+          description: Uploaded document
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Document" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /documents/{document}:
+    parameters:
+      - { name: document, in: path, required: true, schema: { type: integer } }
+    patch:
+      tags: [Documents]
+      operationId: updateDocument
+      summary: Rename, re-categorise or change visibility (visibility changes are audited)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title: { type: string, maxLength: 200 }
+                category: { $ref: "#/components/schemas/DocumentCategory" }
+                visibility: { type: string, enum: [internal, shared] }
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Document" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+    delete:
+      tags: [Documents]
+      operationId: deleteDocument
+      summary: Delete (soft; files are kept until the retention purge)
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /documents/{document}/versions:
+    parameters:
+      - { name: document, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Documents]
+      operationId: uploadDocumentVersion
+      summary: Upload a new version
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file: { type: string, format: binary }
+      responses:
+        "201":
+          description: Document with the new version
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Document" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /documents/{document}/versions/{version}/link:
+    parameters:
+      - { name: document, in: path, required: true, schema: { type: integer } }
+      - { name: version, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Documents]
+      operationId: createDocumentLink
+      summary: "Short-lived signed download URL (logged). `document_unavailable`: 409 while a scan is pending, 403 if malware was found"
+      responses:
+        "200":
+          description: Signed link
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    properties:
+                      url: { type: string, format: uri }
+                      expires_at: { type: string, format: date-time }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /documents/download/{version}:
+    parameters:
+      - { name: version, in: path, required: true, schema: { type: integer } }
+      - { name: expires, in: query, required: true, schema: { type: integer } }
+      - { name: signature, in: query, required: true, schema: { type: string } }
+    get:
+      tags: [Documents]
+      operationId: downloadDocument
+      summary: Download through a signed link (no session; attachment with `nosniff` and a sandbox CSP)
+      security: []
+      responses:
+        "200":
+          description: File
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  # ------------------------------------------------------------------ Messaging (Sprint 9)
+  /conversations:
+    get:
+      tags: [Messaging]
+      operationId: listConversations
+      summary: The user's conversations, most recent first (participants only — no administrator access)
+      parameters:
+        - $ref: "#/components/parameters/PerPage"
+        - $ref: "#/components/parameters/Page"
+      responses:
+        "200":
+          description: Conversations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/ConversationSummary" } }
+                  meta:
+                    type: object
+                    properties:
+                      current_page: { type: integer }
+                      last_page: { type: integer }
+                      total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+    post:
+      tags: [Messaging]
+      operationId: startConversation
+      summary: "Start (or continue) a conversation. Clients can write to active agents only; `transaction_id` includes everyone on the deal"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                recipient_ids: { type: array, items: { type: integer }, minItems: 1, maxItems: 10 }
+                agent_slug: { type: string, description: "Public agent slug (from listing or profile pages)" }
+                transaction_id: { type: integer }
+                property_id: { type: integer }
+                property_slug: { type: string }
+                subject: { type: string, maxLength: 200 }
+                body: { type: string, minLength: 1, maxLength: 5000 }
+      responses:
+        "201":
+          description: Conversation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Conversation" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+  /conversations/unread-count:
+    get:
+      tags: [Messaging]
+      operationId: unreadMessageCount
+      summary: Unread messages across all conversations
+      responses:
+        "200": { $ref: "#/components/responses/UnreadCount" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /conversations/contacts:
+    get:
+      tags: [Messaging]
+      operationId: messageContacts
+      summary: People the user may message (clients see active agents; agents and staff also see brokers/managers)
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+      responses:
+        "200":
+          description: Contacts (max 20)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id: { type: integer }
+                        full_name: { type: string }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+  /conversations/{conversation}:
+    parameters:
+      - { name: conversation, in: path, required: true, schema: { type: integer } }
+    get:
+      tags: [Messaging]
+      operationId: getConversation
+      summary: Messages (latest 200) — marks the conversation read
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Conversation" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+  /conversations/{conversation}/messages:
+    parameters:
+      - { name: conversation, in: path, required: true, schema: { type: integer } }
+    post:
+      tags: [Messaging]
+      operationId: sendMessage
+      summary: "Send a message (immutable). Recipients get an in-app notification; e-mail at most hourly per conversation, without the text"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [body]
+              properties:
+                body: { type: string, minLength: 1, maxLength: 5000 }
+      responses:
+        "201":
+          description: Sent message
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/ChatMessage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { $ref: "#/components/responses/Forbidden" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "422": { $ref: "#/components/responses/ValidationError" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+components:
+  securitySchemes:
+    cookieSession:
+      type: apiKey
+      in: cookie
+      name: hitlease-real-estate-api-session
+      description: Sanctum SPA session cookie (first-party web only) + `X-XSRF-TOKEN` header on mutations.
+    bearerToken:
+      type: http
+      scheme: bearer
+      description: Sanctum personal access token (mobile).
+
+  parameters:
+    ClientChannel:
+      name: X-Hitlease-Client
+      in: header
+      description: Set to `mobile` from the mobile app (MLS mobile-display rules).
+      schema: { type: string, enum: [web, mobile] }
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, minimum: 1, default: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, minimum: 1, maximum: 100 }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      description: Optional. Retries with the same key and body return the first successful response (24 h); a different body is rejected (`idempotency_key_reused`).
+      schema: { type: string, pattern: "^[A-Za-z0-9_-]{8,100}$" }
+    UserId:
+      name: user
+      in: path
+      required: true
+      schema: { type: integer }
+
+  responses:
+    UnreadCount:
+      description: Unread notifications
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                type: object
+                properties:
+                  count: { type: integer }
+    Message:
+      description: Informational message
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              message: { type: string }
+    ValidationError:
+      description: "Validation failed (`validation_failed`, field errors in `details.fields`) or a business rule error"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthenticated:
+      description: "`unauthenticated`"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Forbidden:
+      description: "`forbidden`, `account_deactivated`, `mfa_enrollment_required`, `role_escalation_denied`, …"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: "`not_found`"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Conflict:
+      description: State conflict (e.g. `mfa_already_enabled`, `role_locked`, `mls_not_authorized`)
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    CsrfMismatch:
+      description: "`csrf_token_mismatch`"
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: "`too_many_requests` or `too_many_attempts` (see `Retry-After`)"
+      headers:
+        Retry-After:
+          schema: { type: integer }
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code: { type: string, examples: [validation_failed, invalid_credentials, mfa_required] }
+            message: { type: string }
+            details:
+              type: [object, "null"]
+              properties:
+                fields:
+                  type: object
+                  additionalProperties: { type: array, items: { type: string } }
+                retry_after: { type: integer }
+            request_id: { type: [string, "null"] }
+
+    Password:
+      type: string
+      minLength: 12
+      maxLength: 128
+      description: Must contain upper and lower case letters, a number and a symbol; breached passwords are rejected in production.
+      writeOnly: true
+
+    PasswordConfirmation:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string, writeOnly: true }
+        code: { type: string, description: TOTP code when MFA is enabled }
+
+    RegisterRequest:
+      type: object
+      required: [first_name, last_name, email, password, password_confirmation, accept_terms]
+      properties:
+        first_name: { type: string, maxLength: 100 }
+        last_name: { type: string, maxLength: 100 }
+        email: { type: string, format: email, maxLength: 255 }
+        phone: { type: [string, "null"] }
+        password: { $ref: "#/components/schemas/Password" }
+        password_confirmation: { type: string }
+        locale: { type: string, enum: [en, es] }
+        account_type: { type: string, enum: [buyer, seller], default: buyer }
+        device_name: { type: string, maxLength: 100 }
+        accept_terms: { type: boolean, const: true }
+
+    RoleName:
+      type: string
+      enum: [super_admin, broker, office_manager, agent, seller, buyer]
+
+    User:
+      type: object
+      required: [id, first_name, last_name, full_name, email, status, email_verified, mfa_enabled]
+      properties:
+        id: { type: integer }
+        first_name: { type: string }
+        last_name: { type: string }
+        full_name: { type: string }
+        email: { type: string, format: email }
+        phone: { type: [string, "null"] }
+        locale: { type: string, enum: [en, es] }
+        timezone: { type: string }
+        status: { type: string, enum: [active, deactivated] }
+        email_verified: { type: boolean }
+        mfa_enabled: { type: boolean }
+        is_staff: { type: boolean }
+        roles:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { $ref: "#/components/schemas/RoleName" }
+              display_name: { type: string }
+        permissions:
+          type: array
+          description: Effective permissions (only on own-user endpoints).
+          items: { type: string }
+        last_login_at: { type: [string, "null"], format: date-time }
+        created_at: { type: [string, "null"], format: date-time }
+
+    AccessToken:
+      type: object
+      properties:
+        access_token: { type: string }
+        token_type: { type: string, const: Bearer }
+        expires_at: { type: [string, "null"], format: date-time }
+
+    LoginResult:
+      type: object
+      required: [mfa_required]
+      properties:
+        mfa_required: { type: boolean }
+        data: { $ref: "#/components/schemas/User" }
+
+    AuthSession:
+      type: object
+      properties:
+        id: { type: string, examples: ["token:42"] }
+        type: { type: string, enum: [web, token] }
+        name: { type: string }
+        ip_address: { type: [string, "null"] }
+        user_agent: { type: [string, "null"] }
+        last_used_at: { type: [string, "null"], format: date-time }
+        expires_at: { type: [string, "null"], format: date-time }
+        is_current: { type: boolean }
+
+    Role:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { $ref: "#/components/schemas/RoleName" }
+        display_name: { type: string }
+        description: { type: [string, "null"] }
+        level: { type: integer }
+        is_staff: { type: boolean }
+        is_system: { type: boolean }
+        users_count: { type: integer }
+        permissions: { type: array, items: { type: string } }
+
+    AuditLog:
+      type: object
+      properties:
+        id: { type: integer }
+        category: { type: string, enum: [security, admin, data, mls] }
+        event: { type: string, examples: [auth.login.succeeded] }
+        user:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+            email: { type: string }
+        auditable_type: { type: [string, "null"] }
+        auditable_id: { type: [integer, "null"] }
+        old_values: { type: [object, "null"] }
+        new_values: { type: [object, "null"] }
+        metadata: { type: [object, "null"] }
+        ip_address: { type: [string, "null"] }
+        user_agent: { type: [string, "null"] }
+        request_id: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+
+    PaginationMeta:
+      type: object
+      properties:
+        links:
+          type: object
+          properties:
+            first: { type: [string, "null"] }
+            last: { type: [string, "null"] }
+            prev: { type: [string, "null"] }
+            next: { type: [string, "null"] }
+        meta:
+          type: object
+          properties:
+            current_page: { type: integer }
+            last_page: { type: integer }
+            per_page: { type: integer }
+            total: { type: integer }
+
+    UserPage:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: "#/components/schemas/User" } }
+
+    AuditLogPage:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: "#/components/schemas/AuditLog" } }
+
+    MlsProviderStatus:
+      type: string
+      enum: [pending_authorization, sandbox, authorized, suspended]
+
+    MlsDisplayRule:
+      type: object
+      properties:
+        attribution_template: { type: [string, "null"], examples: ["Listing courtesy of {broker}"] }
+        disclaimer: { type: [string, "null"] }
+        min_refresh_minutes: { type: integer }
+        retention_days: { type: [integer, "null"] }
+        allowed_fields: { type: [array, "null"], items: { type: string } }
+        photo_rules:
+          type: [object, "null"]
+          properties:
+            max_photos: { type: integer }
+        allow_public_display: { type: boolean, default: false }
+        allow_mobile_display: { type: boolean, default: false }
+        allow_ai_processing: { type: boolean, default: false }
+        hide_withdrawn_immediately: { type: boolean, default: true }
+
+    MlsProviderInput:
+      type: object
+      properties:
+        code: { type: string, pattern: "^[a-z0-9_]+$" }
+        name: { type: string }
+        driver: { type: string, enum: [reso_web_api, njmls, gsmls, bright, fixture] }
+        protocol: { type: string, enum: [reso_web_api, rets, other] }
+        website: { type: [string, "null"], format: uri }
+        notes: { type: [string, "null"] }
+        display_rule: { $ref: "#/components/schemas/MlsDisplayRule" }
+
+    MlsProvider:
+      type: object
+      properties:
+        id: { type: integer }
+        code: { type: string }
+        name: { type: string }
+        driver: { type: string }
+        protocol: { type: string }
+        status: { $ref: "#/components/schemas/MlsProviderStatus" }
+        is_enabled: { type: boolean }
+        website: { type: [string, "null"] }
+        notes: { type: [string, "null"] }
+        display_rule: { $ref: "#/components/schemas/MlsDisplayRule" }
+        connections:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              name: { type: string }
+              environment: { type: string, enum: [sandbox, production] }
+              base_url: { type: [string, "null"] }
+              token_url: { type: [string, "null"] }
+              status: { type: string, enum: [inactive, verified, error] }
+              credential_keys:
+                type: array
+                description: Names of stored credential fields — values are never returned.
+                items: { type: string }
+              last_authenticated_at: { type: [string, "null"], format: date-time }
+              last_synced_at: { type: [string, "null"], format: date-time }
+              last_error: { type: [string, "null"] }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+
+    ConnectionTestResult:
+      type: object
+      properties:
+        success: { type: boolean }
+        error:
+          type: [object, "null"]
+          properties:
+            code: { type: string }
+            message: { type: string }
+
+    LanguageCode:
+      type: string
+      enum: [en, es, pt, fr, it, pl, zh, ko, hi, gu, ar, ru, ht, tl]
+
+    Specialty:
+      type: string
+      enum: [buyers, sellers, rentals, first_time_buyers, luxury, condos, multi_family, new_construction, commercial, land, relocation, investment, seniors]
+
+    LicenseStatus:
+      type: string
+      enum: [pending_verification, verified, rejected, expired, revoked]
+
+    VerificationSource:
+      type: string
+      enum: [state_license_lookup, document_review, regulator_confirmation]
+
+    LicenseSubmission:
+      type: object
+      required: [license_number, license_type]
+      properties:
+        license_number: { type: string, minLength: 4, maxLength: 40 }
+        license_state: { type: string, minLength: 2, maxLength: 2, default: NJ }
+        license_type: { type: string, enum: [salesperson, broker_salesperson, broker, referral_agent] }
+        issued_on: { type: string, format: date }
+        expires_on: { type: string, format: date }
+
+    LicenseReason:
+      type: object
+      required: [reason]
+      properties:
+        reason: { type: string, minLength: 5, maxLength: 2000 }
+
+    AgentLicense:
+      type: object
+      properties:
+        id: { type: integer }
+        agent_id: { type: integer }
+        license_number: { type: string }
+        license_state: { type: string }
+        license_type: { type: string }
+        license_type_label: { type: string }
+        status: { $ref: "#/components/schemas/LicenseStatus" }
+        is_currently_valid: { type: boolean }
+        issued_on: { type: [string, "null"], format: date }
+        expires_on: { type: [string, "null"], format: date }
+        verified_at: { type: [string, "null"], format: date-time }
+        verified_by:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+        verification_source: { oneOf: [{ $ref: "#/components/schemas/VerificationSource" }, { type: "null" }] }
+        verification_reference: { type: [string, "null"] }
+        verification_notes: { type: [string, "null"] }
+        status_reason: { type: [string, "null"] }
+        status_changed_at: { type: [string, "null"], format: date-time }
+        agent:
+          type: object
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+            email: { type: string }
+            user_id: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    AgentProfileInput:
+      type: object
+      properties:
+        office_id: { type: [integer, "null"] }
+        public_email: { type: [string, "null"], format: email }
+        public_phone: { type: [string, "null"] }
+        bio: { type: [string, "null"], maxLength: 5000 }
+        bio_es: { type: [string, "null"], maxLength: 5000 }
+        languages: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/LanguageCode" } }
+        specialties: { type: array, maxItems: 10, items: { $ref: "#/components/schemas/Specialty" } }
+        photo_url: { type: [string, "null"], format: uri }
+        is_public: { type: boolean }
+        joined_on: { type: [string, "null"], format: date }
+
+    Agent:
+      type: object
+      properties:
+        id: { type: integer }
+        slug: { type: string }
+        user:
+          type: object
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+            email: { type: string }
+            status: { type: string }
+        agency:
+          type: object
+          properties:
+            id: { type: integer }
+            name: { type: string }
+        office:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            name: { type: string }
+            city: { type: string }
+        status: { type: string, enum: [active, inactive] }
+        is_public: { type: boolean }
+        public_email: { type: [string, "null"] }
+        public_phone: { type: [string, "null"] }
+        bio: { type: [string, "null"] }
+        bio_es: { type: [string, "null"] }
+        languages: { type: array, items: { type: string } }
+        specialties: { type: array, items: { type: string } }
+        photo_url: { type: [string, "null"] }
+        joined_on: { type: [string, "null"], format: date }
+        license_verified: { type: boolean }
+        verified_license: { oneOf: [{ $ref: "#/components/schemas/AgentLicense" }, { type: "null" }] }
+        licenses: { type: array, items: { $ref: "#/components/schemas/AgentLicense" } }
+        created_at: { type: string, format: date-time }
+
+    PublicAgent:
+      type: object
+      properties:
+        slug: { type: string }
+        full_name: { type: string }
+        first_name: { type: string }
+        photo_url: { type: [string, "null"] }
+        email: { type: [string, "null"], description: Public contact e-mail chosen by the agent }
+        phone: { type: [string, "null"] }
+        bio: { type: [string, "null"] }
+        bio_es: { type: [string, "null"] }
+        languages: { type: array, items: { type: string } }
+        specialties: { type: array, items: { type: string } }
+        agency:
+          type: object
+          properties:
+            name: { type: string }
+            license_number: { type: [string, "null"] }
+        office:
+          type: [object, "null"]
+          properties:
+            name: { type: string }
+            street_address: { type: string }
+            unit: { type: [string, "null"] }
+            city: { type: string }
+            state: { type: string }
+            postal_code: { type: string }
+            phone: { type: [string, "null"] }
+        license:
+          type: object
+          properties:
+            type: { type: string }
+            type_label: { type: string }
+            state: { type: string }
+            number: { type: string }
+            verified: { type: boolean, const: true }
+
+    AgencyInput:
+      type: object
+      properties:
+        name: { type: string, maxLength: 150 }
+        legal_name: { type: [string, "null"] }
+        license_number: { type: [string, "null"], description: Brokerage licence as entered (not verified) }
+        email: { type: [string, "null"], format: email }
+        phone: { type: [string, "null"] }
+        website: { type: [string, "null"], format: uri }
+        timezone: { type: string, examples: [America/New_York] }
+
+    Agency:
+      allOf:
+        - $ref: "#/components/schemas/AgencyInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            offices_count: { type: integer }
+            agents_count: { type: integer }
+            offices: { type: array, items: { $ref: "#/components/schemas/Office" } }
+            created_at: { type: string, format: date-time }
+            updated_at: { type: string, format: date-time }
+
+    OfficeInput:
+      type: object
+      properties:
+        agency_id: { type: integer, description: Required on create; cannot be changed }
+        name: { type: string }
+        email: { type: [string, "null"], format: email }
+        phone: { type: [string, "null"] }
+        street_address: { type: string }
+        unit: { type: [string, "null"] }
+        city: { type: string }
+        county: { type: [string, "null"] }
+        state: { type: string, default: NJ }
+        postal_code: { type: string, pattern: "^\\d{5}(-\\d{4})?$" }
+        latitude: { type: [number, "null"], minimum: -90, maximum: 90 }
+        longitude: { type: [number, "null"], minimum: -180, maximum: 180 }
+        is_headquarters: { type: boolean }
+        is_active: { type: boolean }
+
+    Office:
+      allOf:
+        - $ref: "#/components/schemas/OfficeInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            agents_count: { type: integer }
+
+    PropertyTypeCode:
+      type: string
+      enum: [single_family, condominium, townhouse, multi_family, apartment, land, commercial, rental]
+
+    PropertyInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 5, maxLength: 200, description: Required on create }
+        listing_type: { type: string, enum: [sale, rent], description: Required on create }
+        description: { type: [string, "null"] }
+        description_es: { type: [string, "null"] }
+        property_type_id: { type: [integer, "null"] }
+        property_subtype: { type: [string, "null"] }
+        status: { type: string, enum: [active, coming_soon, active_under_contract, pending, closed, withdrawn, expired, canceled] }
+        list_price: { type: [number, "null"], minimum: 0 }
+        listing_agent_id: { type: [integer, "null"], description: Ignored/validated for agents (always their own profile) }
+        street_address: { type: [string, "null"] }
+        unit: { type: [string, "null"] }
+        city: { type: [string, "null"] }
+        county: { type: [string, "null"] }
+        state: { type: string, default: NJ }
+        postal_code: { type: [string, "null"] }
+        address_display: { type: boolean }
+        latitude: { type: [number, "null"] }
+        longitude: { type: [number, "null"] }
+        bedrooms: { type: [integer, "null"] }
+        bathrooms: { type: [number, "null"], multipleOf: 0.5 }
+        living_area_sqft: { type: [integer, "null"] }
+        lot_size_sqft: { type: [number, "null"] }
+        year_built: { type: [integer, "null"] }
+        parking_spaces: { type: [integer, "null"] }
+        garage_spaces: { type: [integer, "null"] }
+        heating: { type: array, items: { type: string } }
+        cooling: { type: array, items: { type: string } }
+        amenities: { type: array, items: { $ref: "#/components/schemas/Amenity" } }
+        hoa_fee_monthly: { type: [number, "null"] }
+        annual_taxes: { type: [number, "null"] }
+
+    PropertyMedia:
+      type: object
+      properties:
+        id: { type: integer }
+        source: { type: string, enum: [upload, mls] }
+        url: { type: [string, "null"] }
+        mime_type: { type: [string, "null"] }
+        width: { type: [integer, "null"] }
+        height: { type: [integer, "null"] }
+        caption: { type: [string, "null"] }
+        sort_order: { type: integer }
+        display_allowed: { type: boolean }
+
+    ManagedProperty:
+      allOf:
+        - $ref: "#/components/schemas/PropertyInput"
+        - type: object
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            source: { type: string, enum: [internal, mls] }
+            is_published: { type: boolean }
+            published_at: { type: [string, "null"], format: date-time }
+            publication_missing: { type: array, items: { type: string }, description: Fields still required before publishing }
+            property_type: { type: [object, "null"] }
+            listing_agent: { type: [object, "null"] }
+            mls:
+              type: [object, "null"]
+              properties:
+                provider: { type: string }
+                listing_id: { type: [string, "null"] }
+                listing_key: { type: string }
+                listing_broker: { type: [string, "null"] }
+                last_synced_at: { type: [string, "null"], format: date-time }
+                removed_at: { type: [string, "null"], format: date-time }
+            media: { type: array, items: { $ref: "#/components/schemas/PropertyMedia" } }
+            status_history:
+              type: array
+              items:
+                type: object
+                properties:
+                  from_status: { type: [string, "null"] }
+                  to_status: { type: string }
+                  from_price: { type: [number, "null"] }
+                  to_price: { type: [number, "null"] }
+                  source: { type: string }
+                  changed_at: { type: string, format: date-time }
+
+    Appointment:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [requested, confirmed, declined, cancelled, completed, no_show] }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        timezone: { type: string, examples: [America/New_York] }
+        property:
+          oneOf:
+            - type: object
+              properties:
+                slug: { type: string }
+                title: { type: string }
+                street_address: { type: [string, "null"], description: "Shown to hosts, for confirmed showings, or when the listing shows it" }
+                city: { type: [string, "null"] }
+                state: { type: string }
+            - type: "null"
+        agent:
+          type: object
+          properties:
+            id: { type: integer }
+            full_name: { type: [string, "null"] }
+            phone: { type: [string, "null"] }
+        contact:
+          description: Hosts and managers only
+          oneOf:
+            - type: object
+              properties:
+                name: { type: string }
+                email: { type: [string, "null"] }
+                phone: { type: [string, "null"] }
+            - type: "null"
+        lead_id: { type: [integer, "null"], description: Hosts and managers only }
+        notes: { type: [string, "null"] }
+        status_reason: { type: [string, "null"] }
+        feedback:
+          description: Hosts and managers only
+          oneOf:
+            - type: object
+              properties:
+                rating: { type: [integer, "null"] }
+                comment: { type: [string, "null"] }
+            - type: "null"
+        can:
+          type: object
+          properties:
+            confirm: { type: boolean }
+            decline: { type: boolean }
+            cancel: { type: boolean }
+            reschedule: { type: boolean }
+            complete: { type: boolean }
+        created_at: { type: [string, "null"], format: date-time }
+    ShowingSlots:
+      type: object
+      properties:
+        bookable: { type: boolean }
+        timezone: { type: [string, "null"] }
+        duration_minutes: { type: [integer, "null"] }
+        days:
+          type: array
+          items:
+            type: object
+            properties:
+              date: { type: string, format: date }
+              slots:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    starts_at: { type: string, format: date-time }
+                    ends_at: { type: string, format: date-time }
+    AvailabilityWindow:
+      type: object
+      required: [weekday, start_time, end_time]
+      properties:
+        weekday: { type: integer, minimum: 1, maximum: 7, description: ISO weekday (1 = Monday) }
+        start_time: { type: string, pattern: "^\\d{2}:\\d{2}$" }
+        end_time: { type: string, pattern: "^\\d{2}:\\d{2}$" }
+    TimeOff:
+      type: object
+      properties:
+        id: { type: integer }
+        starts_at: { type: string, format: date-time }
+        ends_at: { type: string, format: date-time }
+        reason: { type: [string, "null"] }
+    Availability:
+      type: object
+      properties:
+        timezone: { type: string }
+        windows: { type: array, items: { $ref: "#/components/schemas/AvailabilityWindow" } }
+        time_off: { type: array, items: { $ref: "#/components/schemas/TimeOff" } }
+    AppNotification:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        type: { type: [string, "null"], examples: [lead.assigned, showing.confirmed, crm.task_due] }
+        data: { type: object }
+        read_at: { type: [string, "null"], format: date-time }
+        created_at: { type: [string, "null"], format: date-time }
+    NotificationPreferences:
+      type: object
+      additionalProperties:
+        type: object
+        properties:
+          mail: { type: boolean }
+          consented_at: { type: [string, "null"] }
+    LeadStatus:
+      type: string
+      enum: [new, contacted, qualified, showing, negotiating, won, lost]
+    LeadSource:
+      type: string
+      enum: [website_listing, website_agent, website_contact, phone, email, walk_in, referral, social, other]
+    LeadInput:
+      type: object
+      properties:
+        first_name: { type: string, maxLength: 100 }
+        last_name: { type: [string, "null"] }
+        email: { type: [string, "null"], format: email }
+        phone: { type: [string, "null"] }
+        source: { type: string, enum: [phone, email, walk_in, referral, social, other], description: Create only }
+        intent: { type: [string, "null"], enum: [buy, rent, sell, other, null] }
+        message: { type: [string, "null"] }
+        property_id: { type: [integer, "null"] }
+        budget_min: { type: [number, "null"] }
+        budget_max: { type: [number, "null"] }
+        preferred_language: { type: [string, "null"], enum: [en, es, null] }
+        contact_consent: { type: boolean, description: Create only }
+        assigned_agent_id: { type: [integer, "null"], description: Create only; ignored unless the caller has `leads.assign` }
+    Lead:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { $ref: "#/components/schemas/LeadStatus" }
+        source: { $ref: "#/components/schemas/LeadSource" }
+        intent: { type: [string, "null"] }
+        first_name: { type: string }
+        last_name: { type: [string, "null"] }
+        full_name: { type: string }
+        email: { type: [string, "null"] }
+        phone: { type: [string, "null"] }
+        message: { type: [string, "null"] }
+        budget_min: { type: [number, "null"] }
+        budget_max: { type: [number, "null"] }
+        preferred_language: { type: [string, "null"] }
+        contact_consent: { type: boolean }
+        marketing_consent: { type: boolean }
+        consent_at: { type: [string, "null"], format: date-time }
+        lost_reason: { type: [string, "null"] }
+        assigned_agent:
+          oneOf:
+            - type: object
+              properties:
+                id: { type: integer }
+                full_name: { type: [string, "null"] }
+                user_id: { type: integer }
+            - type: "null"
+        property:
+          oneOf:
+            - type: object
+              properties:
+                id: { type: integer }
+                slug: { type: string }
+                title: { type: string }
+            - type: "null"
+        assigned_at: { type: [string, "null"], format: date-time }
+        first_contacted_at: { type: [string, "null"], format: date-time }
+        last_activity_at: { type: [string, "null"], format: date-time }
+        closed_at: { type: [string, "null"], format: date-time }
+        created_at: { type: [string, "null"], format: date-time }
+        activities: { type: array, items: { $ref: "#/components/schemas/LeadActivity" } }
+        tasks: { type: array, items: { $ref: "#/components/schemas/CrmTask" } }
+    LeadActivity:
+      type: object
+      properties:
+        id: { type: integer }
+        type: { type: string, enum: [note, call, email, meeting, inquiry, status_change, assignment, merge] }
+        body: { type: [string, "null"] }
+        metadata: { type: [object, "null"] }
+        user:
+          oneOf:
+            - type: object
+              properties:
+                id: { type: integer }
+                full_name: { type: string }
+            - type: "null"
+        occurred_at: { type: string, format: date-time }
+    CrmTaskInput:
+      type: object
+      properties:
+        title: { type: string, minLength: 2, maxLength: 200 }
+        notes: { type: [string, "null"] }
+        due_at: { type: string, format: date-time }
+        lead_id: { type: [integer, "null"], description: Create only }
+        assigned_to: { type: integer, description: Another user requires `leads.assign` }
+        completed: { type: boolean }
+    CrmTask:
+      type: object
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        notes: { type: [string, "null"] }
+        due_at: { type: string, format: date-time }
+        completed_at: { type: [string, "null"], format: date-time }
+        is_overdue: { type: boolean }
+        lead:
+          oneOf:
+            - type: object
+              properties:
+                id: { type: integer }
+                full_name: { type: string }
+            - type: "null"
+        assignee:
+          type: object
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+        created_at: { type: [string, "null"], format: date-time }
+    CrmSummary:
+      type: object
+      properties:
+        from: { type: string, format: date-time }
+        to: { type: string, format: date-time }
+        total: { type: integer }
+        won: { type: integer }
+        conversion_rate: { type: [number, "null"] }
+        unassigned_open: { type: integer }
+        median_first_response_minutes: { type: [number, "null"] }
+        by_status: { type: object, additionalProperties: { type: integer } }
+        by_source: { type: object, additionalProperties: { type: integer } }
+        by_agent:
+          type: array
+          items:
+            type: object
+            properties:
+              agent_id: { type: integer }
+              full_name: { type: string }
+              assigned: { type: integer }
+              won: { type: integer }
+              median_response_minutes: { type: [number, "null"] }
+    Amenity:
+      type: string
+      enum: [pool, garage, basement, fireplace, central_air, laundry_in_unit, elevator, doorman, gym, balcony, patio, deck, waterfront, pets_allowed, ev_charging, solar, accessible]
+    LocationSuggestion:
+      type: object
+      properties:
+        type: { type: string, enum: [city, postal_code] }
+        label: { type: string, examples: ["Hoboken, NJ"] }
+        city: { type: [string, "null"] }
+        county: { type: [string, "null"] }
+        state: { type: string }
+        postal_code: { type: [string, "null"] }
+        listings: { type: integer }
+        center:
+          oneOf:
+            - type: object
+              properties:
+                latitude: { type: number }
+                longitude: { type: number }
+            - type: "null"
+    SearchFilters:
+      type: object
+      description: Same names and rules as the `GET /properties` query parameters (no page or sort).
+      properties:
+        listing_type: { type: string, enum: [sale, rent] }
+        property_type: { $ref: "#/components/schemas/PropertyTypeCode" }
+        city: { type: string }
+        county: { type: string }
+        postal_code: { type: string }
+        min_price: { type: number }
+        max_price: { type: number }
+        min_beds: { type: integer }
+        min_baths: { type: number }
+        min_sqft: { type: integer }
+        max_sqft: { type: integer }
+        min_year: { type: integer }
+        amenities: { type: array, items: { $ref: "#/components/schemas/Amenity" } }
+        bbox: { type: string }
+        lat: { type: number }
+        lng: { type: number }
+        radius_miles: { type: number }
+        polygon: { type: string }
+    SavedSearchInput:
+      type: object
+      required: [name, filters]
+      properties:
+        name: { type: string, minLength: 2, maxLength: 100 }
+        filters: { $ref: "#/components/schemas/SearchFilters" }
+        sort: { type: [string, "null"], enum: [newest, price_asc, price_desc, sqft_desc, distance, null] }
+        alert_frequency: { type: string, enum: ["off", daily, weekly], default: daily }
+    SavedSearch:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        filters: { $ref: "#/components/schemas/SearchFilters" }
+        sort: { type: [string, "null"] }
+        alert_frequency: { type: string, enum: ["off", daily, weekly] }
+        last_alerted_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+    PublicPropertySummary:
+      type: object
+      properties:
+        slug: { type: string }
+        source: { type: string, enum: [internal, mls] }
+        status: { type: string }
+        listing_type: { type: string, enum: [sale, rent] }
+        property_type: { type: [object, "null"], properties: { code: { type: string }, name: { type: string } } }
+        title: { type: string }
+        list_price: { type: [number, "null"] }
+        currency: { type: string }
+        address:
+          type: object
+          properties:
+            street_address: { type: [string, "null"], description: Null when the listing hides its address }
+            unit: { type: [string, "null"] }
+            city: { type: [string, "null"] }
+            county: { type: [string, "null"] }
+            state: { type: string }
+            postal_code: { type: [string, "null"] }
+            displayed: { type: boolean }
+        location: { type: [object, "null"], properties: { latitude: { type: number }, longitude: { type: number } } }
+        bedrooms: { type: [integer, "null"] }
+        bathrooms: { type: [number, "null"] }
+        living_area_sqft: { type: [integer, "null"] }
+        cover_photo: { type: [string, "null"] }
+        compliance:
+          type: [object, "null"]
+          description: Present for MLS listings
+          properties:
+            source_mls: { type: string }
+            listing_id: { type: [string, "null"] }
+            attribution: { type: [string, "null"] }
+            disclaimer: { type: [string, "null"] }
+            last_updated_at: { type: [string, "null"], format: date-time }
+
+    PublicProperty:
+      allOf:
+        - $ref: "#/components/schemas/PublicPropertySummary"
+        - type: object
+          properties:
+            details:
+              type: object
+              description: Fields an MLS licence does not allow are null.
+            photos:
+              type: array
+              items:
+                type: object
+                properties:
+                  url: { type: string }
+                  caption: { type: [string, "null"] }
+                  width: { type: [integer, "null"] }
+                  height: { type: [integer, "null"] }
+            listing_agent: { type: [object, "null"] }
+            brokerage: { type: [object, "null"] }
+            published_at: { type: [string, "null"], format: date-time }
+
+    MlsSyncJob:
+      type: object
+      properties:
+        id: { type: integer }
+        connection_id: { type: integer }
+        provider: { type: [string, "null"] }
+        type: { type: string, enum: [import, incremental, reconcile] }
+        status: { type: string, enum: [queued, running, succeeded, partial, failed] }
+        stats:
+          type: [object, "null"]
+          properties:
+            fetched: { type: integer }
+            created: { type: integer }
+            updated: { type: integer }
+            unchanged: { type: integer }
+            published: { type: integer }
+            hidden: { type: integer }
+            removed: { type: integer }
+            errors: { type: integer }
+            media: { type: integer }
+        error: { type: [string, "null"] }
+        cursor_before: { type: [string, "null"] }
+        cursor_after: { type: [string, "null"] }
+        triggered_by: { type: [integer, "null"] }
+        started_at: { type: [string, "null"], format: date-time }
+        finished_at: { type: [string, "null"], format: date-time }
+        created_at: { type: string, format: date-time }
+
+    FieldMapping:
+      type: object
+      required: [internal_field, provider_field]
+      properties:
+        internal_field: { type: string, pattern: "^[a-z_]+$", examples: [list_price] }
+        provider_field: { type: string, examples: [ListPrice] }
+
+    OfferStatus:
+      type: string
+      enum: [draft, submitted, countered, accepted, rejected, withdrawn, expired, closed, terminated]
+
+    OfferTerms:
+      type: object
+      properties:
+        amount: { type: number, exclusiveMinimum: 0 }
+        earnest_money: { type: [number, "null"], minimum: 0 }
+        financing: { type: string, enum: [cash, conventional, fha, va, usda, other] }
+        down_payment_percent: { type: [number, "null"], minimum: 0, maximum: 100 }
+        closing_date: { type: [string, "null"], format: date, description: Today or later }
+        contingencies:
+          type: [array, "null"]
+          maxItems: 10
+          items: { type: string, enum: [attorney_review, inspection, financing, appraisal, sale_of_home, hoa_review] }
+        terms: { type: [string, "null"], maxLength: 5000 }
+        expires_at: { type: [string, "null"], format: date-time, description: "Response deadline; past it the offer expires (checked every 5 minutes)" }
+
+    OfferCreateRequest:
+      allOf:
+        - $ref: "#/components/schemas/OfferTerms"
+        - type: object
+          required: [buyer_name, amount, financing]
+          properties:
+            property_id: { type: integer, description: "Either property_id or property_slug" }
+            property_slug: { type: string }
+            lead_id: { type: [integer, "null"] }
+            buyer_agent_id: { type: [integer, "null"], description: "Managers only; agents are always the buyer's agent themselves" }
+            buyer_agent_external: { type: [string, "null"], maxLength: 200 }
+            buyer_name: { type: string, maxLength: 200 }
+            submit: { type: boolean }
+
+    Offer:
+      type: object
+      properties:
+        id: { type: integer }
+        parent_id: { type: [integer, "null"] }
+        side: { type: string, enum: [buyer, seller] }
+        status: { $ref: "#/components/schemas/OfferStatus" }
+        property:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            title: { type: string }
+            list_price: { type: [number, "null"] }
+        buyer_name: { type: string }
+        buyer_agent:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            full_name: { type: [string, "null"] }
+        buyer_agent_external: { type: [string, "null"] }
+        lead_id: { type: [integer, "null"] }
+        amount: { type: number }
+        earnest_money: { type: [number, "null"] }
+        financing: { type: string }
+        down_payment_percent: { type: [number, "null"] }
+        closing_date: { type: [string, "null"], format: date }
+        contingencies: { type: array, items: { type: string } }
+        terms: { type: [string, "null"] }
+        expires_at: { type: [string, "null"], format: date-time }
+        submitted_at: { type: [string, "null"], format: date-time }
+        responded_at: { type: [string, "null"], format: date-time }
+        response_note: { type: [string, "null"] }
+        transaction_id: { type: [integer, "null"] }
+        can:
+          type: [object, "null"]
+          properties:
+            edit: { type: boolean }
+            submit: { type: boolean }
+            withdraw: { type: boolean }
+            respond: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    OfferPage:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: "#/components/schemas/Offer" } }
+
+    Transaction:
+      type: object
+      properties:
+        id: { type: integer }
+        status: { type: string, enum: [open, closed, cancelled] }
+        property:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            slug: { type: string }
+            title: { type: string }
+            street_address: { type: [string, "null"] }
+            city: { type: [string, "null"] }
+            state: { type: [string, "null"] }
+        offer_id: { type: [integer, "null"] }
+        sale_price: { type: number }
+        contract_date: { type: [string, "null"], format: date }
+        closing_date: { type: [string, "null"], format: date }
+        closed_at: { type: [string, "null"], format: date-time }
+        cancelled_at: { type: [string, "null"], format: date-time }
+        cancel_reason: { type: [string, "null"] }
+        listing_agent: { $ref: "#/components/schemas/DealAgent" }
+        buyer_agent: { $ref: "#/components/schemas/DealAgent" }
+        participants:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              role: { type: string, enum: [buyer, seller, attorney, lender, title, other] }
+              name: { type: string }
+              user_id: { type: [integer, "null"] }
+              email: { type: [string, "null"], description: Only for users who manage the transaction }
+              phone: { type: [string, "null"], description: Only for users who manage the transaction }
+        milestones:
+          type: array
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              type: { type: string, enum: [attorney_review, inspection, appraisal, mortgage_commitment, title_search, final_walkthrough, closing, custom] }
+              title: { type: string }
+              due_date: { type: [string, "null"], format: date }
+              completed_at: { type: [string, "null"], format: date-time }
+              notes: { type: [string, "null"] }
+        can:
+          type: object
+          properties:
+            manage: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    DealAgent:
+      type: [object, "null"]
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        full_name: { type: [string, "null"] }
+
+    TransactionPage:
+      allOf:
+        - $ref: "#/components/schemas/PaginationMeta"
+        - type: object
+          properties:
+            data: { type: array, items: { $ref: "#/components/schemas/Transaction" } }
+
+    DocumentCategory:
+      type: string
+      enum: [contract, disclosure, inspection, appraisal, financing, title, closing, identification, other]
+
+    Document:
+      type: object
+      description: Storage paths are never exposed; downloads use signed links.
+      properties:
+        id: { type: integer }
+        title: { type: string }
+        category: { $ref: "#/components/schemas/DocumentCategory" }
+        visibility: { type: string, enum: [internal, shared] }
+        retain_until: { type: [string, "null"], format: date }
+        versions:
+          type: array
+          description: Newest first
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              version: { type: integer }
+              original_name: { type: string }
+              mime_type: { type: string }
+              size: { type: integer }
+              sha256: { type: string }
+              scan_status: { type: string, enum: [pending, clean, infected, unscanned, error] }
+              uploaded_by: { type: [string, "null"] }
+              created_at: { type: string, format: date-time }
+        created_at: { type: string, format: date-time }
+
+    ConversationSummary:
+      type: object
+      properties:
+        id: { type: integer }
+        subject: { type: [string, "null"] }
+        property:
+          type: [object, "null"]
+          properties:
+            slug: { type: string }
+            title: { type: string }
+        transaction_id: { type: [integer, "null"] }
+        participants:
+          type: array
+          description: Other participants
+          items:
+            type: object
+            properties:
+              id: { type: integer }
+              full_name: { type: string }
+        last_message:
+          type: [object, "null"]
+          properties:
+            body: { type: string, description: First 140 characters }
+            mine: { type: boolean }
+            created_at: { type: string, format: date-time }
+        last_message_at: { type: [string, "null"], format: date-time }
+        unread: { type: integer }
+
+    Conversation:
+      allOf:
+        - $ref: "#/components/schemas/ConversationSummary"
+        - type: object
+          properties:
+            messages: { type: array, items: { $ref: "#/components/schemas/ChatMessage" } }
+
+    ChatMessage:
+      type: object
+      properties:
+        id: { type: integer }
+        body: { type: string }
+        author:
+          type: [object, "null"]
+          properties:
+            id: { type: integer }
+            full_name: { type: string }
+        mine: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    AgencyDashboard:
+      type: object
+      properties:
+        from: { type: string, format: date }
+        to: { type: string, format: date }
+        timezone: { type: string, examples: [America/New_York] }
+        listings:
+          type: object
+          properties:
+            published: { type: integer }
+            active: { type: integer }
+            under_contract: { type: integer }
+            internal: { type: integer }
+            mls: { type: integer }
+            new_in_period: { type: integer }
+            median_active_price: { type: [number, "null"] }
+        agents:
+          type: object
+          properties:
+            active: { type: integer }
+            licences_pending: { type: integer }
+            licences_expiring_30d: { type: integer }
+        leads:
+          type: object
+          properties:
+            created: { type: integer }
+            won: { type: integer }
+            conversion_rate: { type: [number, "null"] }
+            unassigned_open: { type: integer }
+        showings:
+          type: object
+          properties:
+            scheduled: { type: integer }
+            completed: { type: integer }
+            no_show: { type: integer }
+            cancelled_or_declined: { type: integer }
+        offers:
+          type: object
+          description: Negotiations (original offers) submitted in the period and how many ended accepted
+          properties:
+            submitted: { type: integer }
+            accepted: { type: integer }
+            acceptance_rate: { type: [number, "null"] }
+        transactions:
+          type: object
+          properties:
+            opened: { type: integer }
+            closed: { type: integer }
+            cancelled: { type: integer }
+            closed_volume: { type: number }
+            open: { type: integer }
+            open_volume: { type: number }
+        series:
+          type: object
+          properties:
+            interval: { type: string, enum: [day, week], description: "Weekly (ISO weeks) for periods longer than 62 days" }
+            points:
+              type: array
+              items:
+                type: object
+                properties:
+                  date: { type: string, format: date }
+                  leads: { type: integer }
+                  showings: { type: integer }
+                  offers: { type: integer }
+                  closings: { type: integer }
+
+    Readiness:
+      type: object
+      properties:
+        status: { type: string, enum: [ok, degraded, fail] }
+        checks:
+          type: object
+          properties:
+            database: { type: string, enum: [ok, fail] }
+            cache: { type: string, enum: [ok, fail] }
+            storage: { type: string, enum: [ok, fail] }
+            queue: { type: string, enum: [ok, degraded, fail] }
+            scheduler: { type: string, enum: [ok, degraded] }
+        queue_backlog: { type: [integer, "null"] }
+        scheduler_heartbeat_age_seconds: { type: [integer, "null"] }

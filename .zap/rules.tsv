@@ -1,0 +1,6 @@
+10010	IGNORE	(XSRF-TOKEN must be readable by the SPA (Sanctum double-submit); the session cookie is HttpOnly)
+10027	IGNORE	(Matches words such as "select"/"user" inside minified framework bundles, not developer comments)
+10031	IGNORE	(Search terms are echoed into input values by React, which escapes attributes)
+10055	IGNORE	(Accepted risk) (img-src https: is required for MLS-hosted photos; script/style 'unsafe-inline' needed by Next.js without nonces - tracked in docs/security/security-plan.md)
+10109	IGNORE	(Informational: single-page application detected)
+10112	IGNORE	(Informational: session cookie set on sign-in)
