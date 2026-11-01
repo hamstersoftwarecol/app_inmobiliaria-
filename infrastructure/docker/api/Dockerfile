@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # App Inmobiliaria API — PHP-FPM image (also used for queue worker and scheduler).
 
-FROM composer:2.8 AS vendor
+FROM composer:2.9 AS vendor
 WORKDIR /app
 COPY apps/api/composer.json apps/api/composer.lock ./
 RUN composer install --no-dev --no-interaction --no-scripts --no-autoloader --prefer-dist
