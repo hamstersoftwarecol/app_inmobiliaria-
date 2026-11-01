@@ -37,13 +37,13 @@ jobs:
           repo="ghcr.io/${GITHUB_REPOSITORY,,}"
           echo "api=${repo}/api:${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
           echo "web=${repo}/web:${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infrastructure/docker/api/Dockerfile
           push: true
           tags: ${{ steps.names.outputs.api }}
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@v7
         with:
           context: .
           file: infrastructure/docker/web/Dockerfile
